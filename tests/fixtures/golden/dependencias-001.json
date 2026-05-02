@@ -1,0 +1,23 @@
+{
+  "session": "session001-dev-foo",
+  "path": ".qtc/sessions/session001-dev-foo/DEPENDENCIAS.md",
+  "exists": true,
+  "headers": [
+    "Paquete",
+    "Versión",
+    "Motivo"
+  ],
+  "rows": [
+    {
+      "Paquete": "vitest",
+      "Versión": "^2.1.8",
+      "Motivo": "tests"
+    },
+    {
+      "Paquete": "biome",
+      "Versión": "^1.9.4",
+      "Motivo": "lint"
+    }
+  ],
+  "count": 2
+}

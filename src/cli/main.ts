@@ -6,7 +6,15 @@ import { NodeFileSystem } from "../adapters/node-file-system.js";
 import { NodeProcess } from "../adapters/node-process.js";
 import type { CommandResult, ExitCode } from "../domain/types.js";
 import { RuntimeConfigService } from "../runtime/config-service.js";
+import { decisionesListCommand } from "./commands/decisiones-list.js";
+import { dependenciasListCommand } from "./commands/dependencias-list.js";
+import { historyDataCommand } from "./commands/history-data.js";
+import { objetivoDataCommand } from "./commands/objetivo-data.js";
+import { projectMdUpsertCommand } from "./commands/project-md-upsert.js";
+import { sessionArtifactsCommand } from "./commands/session-artifacts.js";
+import { sessionResumeCommand } from "./commands/session-resume.js";
 import { sessionsCommand } from "./commands/sessions.js";
+import { tasksDataCommand } from "./commands/tasks-data.js";
 import { parseArgv } from "./parser.js";
 import { CommandRegistry } from "./registry.js";
 import { renderRaw, writeStderr, writeStdout } from "./render.js";
@@ -20,6 +28,14 @@ async function run(argv: string[]): Promise<ExitCode> {
 
   const registry = new CommandRegistry();
   registry.register(sessionsCommand);
+  registry.register(objetivoDataCommand);
+  registry.register(tasksDataCommand);
+  registry.register(decisionesListCommand);
+  registry.register(dependenciasListCommand);
+  registry.register(historyDataCommand);
+  registry.register(sessionArtifactsCommand);
+  registry.register(projectMdUpsertCommand);
+  registry.register(sessionResumeCommand);
 
   let parsed: ReturnType<typeof parseArgv>;
   try {

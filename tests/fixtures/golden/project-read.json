@@ -1,0 +1,29 @@
+{
+  "block": {
+    "proyecto": "Workspace fixture sample-workspace para tests golden de @tacuchi/agent-workflow.\n\nMode: single-repo",
+    "mode": "project",
+    "fuentes": [
+      {
+        "alias": "sample",
+        "path": ".",
+        "main_branch": "main"
+      }
+    ],
+    "stack": {},
+    "sessions": [
+      {
+        "folder": "session001-dev-foo",
+        "phase": "requerimiento",
+        "branches": []
+      }
+    ],
+    "working_branches": {
+      "sample": "main"
+    },
+    "last_activity": "2026-01-03 — fixture"
+  },
+  "files": [
+    "CLAUDE.md",
+    "AGENTS.md"
+  ]
+}

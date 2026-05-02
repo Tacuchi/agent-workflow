@@ -1,25 +1,15 @@
-import { join, relative } from "node:path";
-import type { Flow, Phase, SessionState } from "../domain/types.js";
+import { join } from "node:path";
+import type { Phase, SessionState } from "../domain/types.js";
 import type { EnvPort } from "../ports/env.js";
 import type { FileSystemPort } from "../ports/file-system.js";
-import { firstNonEmptyLine, parseMdSection, parseMdValue } from "./markdown.js";
+import {
+  type SessionEntry,
+  buildSessionEntry,
+  listSessionFolders,
+  serializeSessionEntry,
+} from "./session-resolver.js";
 
-export const KNOWN_FLOWS: ReadonlyArray<Flow> = ["core", "dev", "design", "analyze"];
-const SESSION_FOLDER_RE = /^session(\d{3})-(.+)$/;
-
-export interface SessionEntry {
-  code: string | null;
-  flow: Flow | null;
-  name: string;
-  folder: string;
-  path: string;
-  state: SessionState;
-  phase: Phase | "requirement";
-  date?: string;
-  summary?: string;
-  branch?: string;
-  legacy_source?: string;
-}
+export type { SessionEntry };
 
 export interface ListSessionsInput {
   includeLegacy?: boolean;
@@ -70,7 +60,7 @@ export class SessionsService {
     const activeCount = sessions.filter((s) => s.state === "active").length;
     const closedCount = sessions.filter((s) => s.state === "closed").length;
 
-    const filtered = this.applyFilter(sessions, input);
+    const filtered = applyFilter(sessions, input);
 
     const payload: ListSessionsOutput = {
       sessions: filtered,
@@ -96,176 +86,32 @@ export class SessionsService {
     cwd: string,
     verbose: boolean,
   ): Promise<SessionEntry[]> {
-    if (!(await this.fs.exists(dir))) {
-      return [];
-    }
-    const entries = await this.fs.list(dir);
-    const sessionDirs = entries
-      .filter((e) => e.type === "dir" && SESSION_FOLDER_RE.test(e.name))
-      .sort((a, b) => a.name.localeCompare(b.name));
-
+    const folders = await listSessionFolders(this.fs, dir);
     const result: SessionEntry[] = [];
-    for (const entry of sessionDirs) {
-      result.push(await this.buildEntry(entry.path, entry.name, legacySource, cwd, verbose));
+    for (const folder of folders) {
+      const opts: { verbose: boolean; legacySource?: string } = { verbose };
+      if (legacySource !== undefined) {
+        opts.legacySource = legacySource;
+      }
+      const built = await buildSessionEntry(this.fs, folder.path, folder.name, opts);
+      result.push(serializeSessionEntry(built, cwd, { verbose }));
     }
     return result;
   }
-
-  private async buildEntry(
-    sessionPath: string,
-    folder: string,
-    legacySource: string | undefined,
-    cwd: string,
-    verbose: boolean,
-  ): Promise<SessionEntry> {
-    const { code, flow, name } = parseSessionFolder(folder);
-
-    const status = await this.readStatus(sessionPath);
-    const hasStatus = status !== null;
-    const state: SessionState = status?.state ?? "active";
-    const phase: Phase | "requirement" = status?.phase ?? "requirement";
-
-    const requirement = await this.readRequirement(sessionPath);
-    const date = requirement.date ?? (await this.mtimeAsDate(sessionPath));
-    const summary = requirement.summary ?? (name ? name.replace(/-/g, " ") : folder);
-
-    if (!verbose) {
-      const compact: SessionEntry = {
-        code,
-        flow,
-        name,
-        folder,
-        path: relativeToCwd(sessionPath, cwd),
-        state,
-        phase,
-        ...(date ? { date } : {}),
-        summary,
-        ...(requirement.branch ? { branch: requirement.branch } : {}),
-        ...(legacySource ? { legacy_source: legacySource } : {}),
-      };
-      return compact;
-    }
-
-    const verboseEntry: SessionEntry & { has_status: boolean } = {
-      code,
-      flow,
-      name,
-      folder,
-      path: sessionPath,
-      state,
-      phase,
-      ...(date ? { date } : {}),
-      summary,
-      ...(requirement.branch ? { branch: requirement.branch } : {}),
-      has_status: hasStatus,
-      ...(legacySource ? { legacy_source: legacySource } : {}),
-    };
-    return verboseEntry;
-  }
-
-  private async readStatus(
-    sessionPath: string,
-  ): Promise<{ state: SessionState; phase: Phase } | null> {
-    const path = join(sessionPath, "STATUS.md");
-    if (!(await this.fs.exists(path))) {
-      return null;
-    }
-    const text = await this.fs.readText(path);
-    const stateRaw = parseMdValue(text, "State")?.toLowerCase();
-    const phaseRaw = parseMdValue(text, "Phase")?.toLowerCase();
-    const state: SessionState = stateRaw === "closed" ? "closed" : "active";
-    const phase: Phase = isPhase(phaseRaw) ? phaseRaw : "planning";
-    return { state, phase };
-  }
-
-  private async readRequirement(
-    sessionPath: string,
-  ): Promise<{ date?: string; summary?: string; branch?: string }> {
-    const objetivoPath = join(sessionPath, "OBJETIVO.md");
-    const requirementsPath = join(sessionPath, "REQUIREMENTS.md");
-    const path = (await this.fs.exists(objetivoPath))
-      ? objetivoPath
-      : (await this.fs.exists(requirementsPath))
-        ? requirementsPath
-        : null;
-    if (path === null) {
-      return {};
-    }
-    const text = await this.fs.readText(path);
-    const date = parseMdValue(text, "Fecha de inicio");
-    const branch = parseMdValue(text, "Rama");
-    const section =
-      parseMdSection(text, "Requerimiento") ??
-      parseMdSection(text, "Brief") ??
-      parseMdSection(text, "Pregunta") ??
-      parseMdSection(text, "Descripción") ??
-      parseMdSection(text, "Descripcion");
-    const firstLine = section ? firstNonEmptyLine(section) : undefined;
-    const summary = firstLine ? firstLine.slice(0, 100) : undefined;
-    return {
-      ...(date ? { date } : {}),
-      ...(summary ? { summary } : {}),
-      ...(branch ? { branch } : {}),
-    };
-  }
-
-  private async mtimeAsDate(path: string): Promise<string | undefined> {
-    try {
-      const info = await this.fs.stat(path);
-      return formatDateOnly(info.mtime);
-    } catch {
-      return undefined;
-    }
-  }
-
-  private applyFilter(sessions: SessionEntry[], input: ListSessionsInput): SessionEntry[] {
-    if (input.state && input.state !== "all") {
-      return sessions.filter((s) => s.state === input.state);
-    }
-    if (input.state === "all" || input.verbose === true) {
-      return sessions;
-    }
-    return sessions.filter((s) => s.state === "active");
-  }
 }
 
-export function parseSessionFolder(folder: string): {
-  code: string | null;
-  flow: Flow | null;
-  name: string;
-} {
-  const m = folder.match(SESSION_FOLDER_RE);
-  if (!m || !m[1] || !m[2]) {
-    return { code: null, flow: null, name: folder };
+function applyFilter(sessions: SessionEntry[], input: ListSessionsInput): SessionEntry[] {
+  if (input.state && input.state !== "all") {
+    return sessions.filter((s) => s.state === input.state);
   }
-  const code = m[1];
-  const rest = m[2];
-  const parts = rest.split("-");
-  const candidate = parts[0];
-  if (
-    parts.length >= 2 &&
-    candidate &&
-    (KNOWN_FLOWS as ReadonlyArray<string>).includes(candidate)
-  ) {
-    return { code, flow: candidate as Flow, name: parts.slice(1).join("-") };
+  if (input.state === "all" || input.verbose === true) {
+    return sessions;
   }
-  return { code, flow: null, name: rest };
+  return sessions.filter((s) => s.state === "active");
 }
 
-function isPhase(value: string | undefined): value is Phase {
-  return (
-    value === "planning" || value === "execution" || value === "validation" || value === "closure"
-  );
-}
+// Backwards-compat re-export. Other modules may import { parseSessionFolder } from this file.
+export { parseSessionFolder, KNOWN_FLOWS } from "./session-resolver.js";
 
-function relativeToCwd(path: string, cwd: string): string {
-  const rel = relative(cwd, path);
-  return rel.length > 0 ? rel : ".";
-}
-
-function formatDateOnly(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
+// Suppress unused-import warning for type Phase used elsewhere historically.
+export type { Phase };

@@ -1,0 +1,31 @@
+{
+  "session": "session001-dev-foo",
+  "path": ".qtc/sessions/session001-dev-foo",
+  "code": "001",
+  "flow": "dev",
+  "state": "active",
+  "phase": "requirement",
+  "artifacts": {
+    "objetivo": {
+      "titulo": "Objetivo — session001-dev-foo",
+      "tipo": "feature",
+      "modalidad": null,
+      "criterios_count": 1,
+      "fuentes_mencionadas": [],
+      "has_origen": false
+    },
+    "tasks": {
+      "total": 5,
+      "open": 3,
+      "closed": 2,
+      "progress_pct": 40,
+      "next_open": {
+        "n": 3,
+        "status": "open",
+        "text": "T2.1 — parser markdown"
+      }
+    },
+    "decisiones_count": 3,
+    "dependencias_present": true
+  }
+}

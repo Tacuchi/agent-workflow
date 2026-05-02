@@ -1,0 +1,58 @@
+import { join } from "node:path";
+import type { EnvPort } from "../ports/env.js";
+import type { FileSystemPort } from "../ports/file-system.js";
+import { parseDependencias } from "./parsers/dependencias.js";
+import { relpath } from "./paths.js";
+import { resolveSession } from "./session-resolver.js";
+
+export interface DependenciasCommandInput {
+  code?: string;
+}
+
+export interface DependenciasCommandOutput {
+  session: string;
+  path: string;
+  exists: boolean;
+  headers: string[];
+  rows: Record<string, string>[];
+  count: number;
+}
+
+export interface DependenciasCommandError {
+  error: string;
+  code: string | null;
+}
+
+export type DependenciasCommandResult = DependenciasCommandOutput | DependenciasCommandError;
+
+export async function runDependenciasCommand(
+  fs: FileSystemPort,
+  env: EnvPort,
+  input: DependenciasCommandInput,
+): Promise<DependenciasCommandResult> {
+  const session = await resolveSession(fs, env, input.code, true);
+  if (!session) {
+    return { error: "session_not_found", code: input.code ?? null };
+  }
+  const depPath = join(session.path, "DEPENDENCIAS.md");
+  const pathPosix = relpath(depPath, env.cwd());
+
+  if (!(await fs.exists(depPath))) {
+    return {
+      session: session.folder,
+      path: pathPosix,
+      exists: false,
+      headers: [],
+      rows: [],
+      count: 0,
+    };
+  }
+  const text = await fs.readText(depPath);
+  const parsed = parseDependencias(text);
+  return {
+    session: session.folder,
+    path: pathPosix,
+    exists: true,
+    ...parsed,
+  };
+}
