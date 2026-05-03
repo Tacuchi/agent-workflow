@@ -11,6 +11,7 @@ import {
   TestEnv,
   cloneFixture,
   normalizeLastActivity,
+  normalizeTodayDate,
   readFile,
 } from "./lib/before-after-fixture.js";
 
@@ -140,8 +141,8 @@ describe("Wave 1B write commands — golden parity vs python qtc_core", () => {
     );
     expect(existsSync(objPath)).toBe(true);
     expect(readFile(objPath)).toEqual(loadGoldenFile("session-create-dev", "OBJETIVO.md"));
-    expect(readFile(join(clone.cwd, ".qtc", "HISTORY.md"))).toEqual(
-      loadGoldenFile("session-create-dev", ".qtc/HISTORY.md"),
+    expect(normalizeTodayDate(readFile(join(clone.cwd, ".qtc", "HISTORY.md")))).toEqual(
+      normalizeTodayDate(loadGoldenFile("session-create-dev", ".qtc/HISTORY.md")),
     );
     expect(normalizeLastActivity(readFile(join(clone.cwd, "CLAUDE.md")))).toEqual(
       normalizeLastActivity(loadGoldenFile("session-create-dev", "CLAUDE.md")),

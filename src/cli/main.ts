@@ -9,6 +9,12 @@ import { RuntimeConfigService } from "../runtime/config-service.js";
 import { autoCompactOnCloseCommand, checkpointWriteCommand } from "./commands/checkpoint-write.js";
 import { decisionesListCommand } from "./commands/decisiones-list.js";
 import { dependenciasListCommand } from "./commands/dependencias-list.js";
+import {
+  harnessCommand,
+  logsCommand,
+  nextNumberCommand,
+  profilesCommand,
+} from "./commands/dev-only.js";
 import { historyDataCommand } from "./commands/history-data.js";
 import { historyUpdateCommand } from "./commands/history-update.js";
 import { hookCommand } from "./commands/hook.js";
@@ -81,6 +87,10 @@ async function run(argv: string[]): Promise<ExitCode> {
   registry.register(autoCompactOnCloseCommand);
   registry.register(hookCommand);
   registry.register(mcpCommand);
+  registry.register(harnessCommand);
+  registry.register(profilesCommand);
+  registry.register(logsCommand);
+  registry.register(nextNumberCommand);
   registry.register(projectMdUpsertCommand);
   registry.register(sessionResumeCommand);
 

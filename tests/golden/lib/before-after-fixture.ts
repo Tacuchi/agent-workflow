@@ -46,3 +46,12 @@ export function normalizeLastActivity(text: string): string {
     "- Última actividad: TS",
   );
 }
+
+/**
+ * Normalizes today's `YYYY-MM-DD` dates (e.g. session-create writes the date
+ * the test runs). Replaces every `2026-XX-XX` style date with `DATE` so
+ * goldens captured on a different day still compare byte-byte.
+ */
+export function normalizeTodayDate(text: string): string {
+  return text.replace(/\b20\d{2}-\d{2}-\d{2}\b/g, "DATE");
+}
