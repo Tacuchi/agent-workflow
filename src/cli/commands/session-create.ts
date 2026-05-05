@@ -28,7 +28,7 @@ export const sessionCreateCommand: QtcCommand = {
     const modalidad = args.values.get("modalidad");
     if (modalidad !== undefined) input.modalidad = modalidad;
 
-    const data = await runSessionCreate(ctx.fs, ctx.env, input);
+    const data = await runSessionCreate(ctx.fs, ctx.env, ctx.paths, input);
     if ("error" in data) {
       return {
         ok: false,

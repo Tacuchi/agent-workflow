@@ -13,7 +13,7 @@ export const sessionArtifactsCommand: QtcCommand = {
     const input: { code?: string; verbose?: boolean } = {};
     if (code !== undefined) input.code = code;
     if (verbose) input.verbose = true;
-    const data = await runArtifactsCommand(ctx.fs, ctx.env, input);
+    const data = await runArtifactsCommand(ctx.fs, ctx.env, ctx.paths, input);
     return { ok: true, data, exitCode: 0 };
   },
 };

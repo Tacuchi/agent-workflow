@@ -9,7 +9,12 @@ export const sessionResumeCommand: QtcCommand = {
   describe: "Load resume payload for a session (objetivo + phase from QTC-PROJECT).",
   async execute(args: ParsedArgs, ctx: CliContext): Promise<CommandResult> {
     const code = args.values.get("code");
-    const data = await runSessionResume(ctx.fs, ctx.env, code !== undefined ? { code } : {});
+    const data = await runSessionResume(
+      ctx.fs,
+      ctx.env,
+      ctx.paths,
+      code !== undefined ? { code } : {},
+    );
     return { ok: true, data, exitCode: 0 };
   },
 };

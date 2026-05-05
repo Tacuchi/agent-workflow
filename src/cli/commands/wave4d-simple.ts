@@ -30,7 +30,7 @@ export const graduateCommand: QtcCommand = {
   name: "graduate",
   describe: "Graduate a session decision (DEC-NNN) or plan (TASKS) to docs/.",
   async execute(args: ParsedArgs, ctx: CliContext): Promise<CommandResult> {
-    const input: Parameters<typeof runGraduate>[2] = {};
+    const input: Parameters<typeof runGraduate>[3] = {};
     const kind = args.values.get("kind");
     if (kind !== undefined) input.kind = kind;
     const session = args.values.get("session");
@@ -39,7 +39,7 @@ export const graduateCommand: QtcCommand = {
     if (id !== undefined) input.decId = id;
     const slug = args.values.get("slug");
     if (slug !== undefined) input.slug = slug;
-    const data = await runGraduate(ctx.fs, ctx.env, input);
+    const data = await runGraduate(ctx.fs, ctx.env, ctx.paths, input);
     if ("error" in data) {
       return {
         ok: false,

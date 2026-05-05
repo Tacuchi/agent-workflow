@@ -41,32 +41,32 @@ const paths = new PathsService(normalizeNamespace("qtc"), env.homeDir(), env.cwd
 
 describe("Wave 1 read commands — golden parity vs python qtc_core", () => {
   it("objetivo-data --code 001", async () => {
-    const result = await runObjetivoCommand(fs, env, { code: "001" });
+    const result = await runObjetivoCommand(fs, env, paths, { code: "001" });
     expect(result).toEqual(loadGolden("objetivo-001.json"));
   });
 
   it("tasks-data --code 001", async () => {
-    const result = await runTasksCommand(fs, env, { code: "001" });
+    const result = await runTasksCommand(fs, env, paths, { code: "001" });
     expect(result).toEqual(loadGolden("tasks-001.json"));
   });
 
   it("tasks-data --code 001 --only-open", async () => {
-    const result = await runTasksCommand(fs, env, { code: "001", onlyOpen: true });
+    const result = await runTasksCommand(fs, env, paths, { code: "001", onlyOpen: true });
     expect(result).toEqual(loadGolden("tasks-001-open.json"));
   });
 
   it("tasks-data --code 002 (empty fixture)", async () => {
-    const result = await runTasksCommand(fs, env, { code: "002" });
+    const result = await runTasksCommand(fs, env, paths, { code: "002" });
     expect(result).toEqual(loadGolden("tasks-002.json"));
   });
 
   it("decisiones-list --code 001", async () => {
-    const result = await runDecisionesCommand(fs, env, { code: "001" });
+    const result = await runDecisionesCommand(fs, env, paths, { code: "001" });
     expect(result).toEqual(loadGolden("decisiones-001.json"));
   });
 
   it("dependencias-list --code 001", async () => {
-    const result = await runDependenciasCommand(fs, env, { code: "001" });
+    const result = await runDependenciasCommand(fs, env, paths, { code: "001" });
     expect(result).toEqual(loadGolden("dependencias-001.json"));
   });
 
@@ -76,7 +76,7 @@ describe("Wave 1 read commands — golden parity vs python qtc_core", () => {
   });
 
   it("session-artifacts --code 001", async () => {
-    const result = await runArtifactsCommand(fs, env, { code: "001" });
+    const result = await runArtifactsCommand(fs, env, paths, { code: "001" });
     expect(result).toEqual(loadGolden("artifacts-001.json"));
   });
 
@@ -86,7 +86,7 @@ describe("Wave 1 read commands — golden parity vs python qtc_core", () => {
   });
 
   it("session-resume --code 001", async () => {
-    const result = await runSessionResume(fs, env, { code: "001" });
+    const result = await runSessionResume(fs, env, paths, { code: "001" });
     expect(result).toEqual(loadGolden("resume-001.json"));
   });
 });

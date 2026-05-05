@@ -2,6 +2,7 @@ import { join } from "node:path";
 import type { EnvPort } from "../ports/env.js";
 import type { FileSystemPort } from "../ports/file-system.js";
 import { parseDependencias } from "./parsers/dependencias.js";
+import type { PathsService } from "./paths-service.js";
 import { relpath } from "./paths.js";
 import { resolveSession } from "./session-resolver.js";
 
@@ -28,9 +29,10 @@ export type DependenciasCommandResult = DependenciasCommandOutput | Dependencias
 export async function runDependenciasCommand(
   fs: FileSystemPort,
   env: EnvPort,
+  paths: PathsService,
   input: DependenciasCommandInput,
 ): Promise<DependenciasCommandResult> {
-  const session = await resolveSession(fs, env, input.code, true);
+  const session = await resolveSession(fs, env, paths, input.code, true);
   if (!session) {
     return { error: "session_not_found", code: input.code ?? null };
   }

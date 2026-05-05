@@ -4,6 +4,7 @@ import type { FileSystemPort } from "../ports/file-system.js";
 import { parseDecisiones } from "./parsers/decisiones.js";
 import { parseObjetivo } from "./parsers/objetivo.js";
 import { type TaskItem, parseTasks } from "./parsers/tasks.js";
+import type { PathsService } from "./paths-service.js";
 import { relpath } from "./paths.js";
 import { resolveSession } from "./session-resolver.js";
 
@@ -62,9 +63,10 @@ export interface ArtifactsError {
 export async function runArtifactsCommand(
   fs: FileSystemPort,
   env: EnvPort,
+  paths: PathsService,
   input: ArtifactsInput,
 ): Promise<ArtifactsOutput | ArtifactsError> {
-  const session = await resolveSession(fs, env, input.code, true);
+  const session = await resolveSession(fs, env, paths, input.code, true);
   if (!session) {
     return { error: "session_not_found", code: input.code ?? null };
   }

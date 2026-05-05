@@ -2,6 +2,7 @@ import { join } from "node:path";
 import type { EnvPort } from "../ports/env.js";
 import type { FileSystemPort } from "../ports/file-system.js";
 import { type ParsedDecision, parseDecisiones } from "./parsers/decisiones.js";
+import type { PathsService } from "./paths-service.js";
 import { relpath } from "./paths.js";
 import { resolveSession } from "./session-resolver.js";
 
@@ -28,9 +29,10 @@ export type DecisionesCommandResult = DecisionesCommandOutput | DecisionesComman
 export async function runDecisionesCommand(
   fs: FileSystemPort,
   env: EnvPort,
+  paths: PathsService,
   input: DecisionesCommandInput,
 ): Promise<DecisionesCommandResult> {
-  const session = await resolveSession(fs, env, input.code, true);
+  const session = await resolveSession(fs, env, paths, input.code, true);
   if (!session) {
     return { error: "session_not_found", code: input.code ?? null };
   }

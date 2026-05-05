@@ -2,6 +2,7 @@
 import { join } from "node:path";
 import type { EnvPort } from "../ports/env.js";
 import type { FileSystemPort } from "../ports/file-system.js";
+import type { PathsService } from "./paths-service.js";
 
 const KNOWN_FLOWS = ["core", "dev", "design", "analyze"] as const;
 type KnownFlow = (typeof KNOWN_FLOWS)[number];
@@ -31,12 +32,14 @@ export interface OrigenError {
 export async function resolveOrigen(
   fs: FileSystemPort,
   env: EnvPort,
+  paths: PathsService,
   flowCodeRaw: string | undefined | null,
 ): Promise<ResolvedOrigen | OrigenError> {
+  void env;
   const parsed = parseFlowCode(flowCodeRaw);
   if ("error" in parsed) return parsed;
 
-  const sessionsDir = join(env.cwd(), ".qtc", "sessions");
+  const sessionsDir = paths.cwdSessionsDir();
   if (!(await fs.exists(sessionsDir))) {
     return { error: ".qtc/sessions/ no existe en el CWD" };
   }

@@ -2,7 +2,8 @@ import { join } from "node:path";
 import type { EnvPort } from "../ports/env.js";
 import type { FileSystemPort } from "../ports/file-system.js";
 import { type ResolvedOrigen, renderOrigenBlock, resolveOrigen } from "./handoff.js";
-import { buildRow, historyPath, upsertRow } from "./history-table.js";
+import { buildRow, upsertRow } from "./history-table.js";
+import type { PathsService } from "./paths-service.js";
 import {
   type ProjectMdUpsertOutput,
   runProjectMdUpsertWrite,
@@ -52,20 +53,21 @@ export interface SessionCreateError {
 export async function runSessionCreate(
   fs: FileSystemPort,
   env: EnvPort,
+  paths: PathsService,
   input: SessionCreateInput,
 ): Promise<SessionCreateFullOutput | SessionCreateError> {
   const validated = validateInput(input);
   if ("error" in validated) return validated;
   const { flow } = validated;
 
-  const origen = await resolveOrigenIfPresent(fs, env, input.origenRaw);
+  const origen = await resolveOrigenIfPresent(fs, env, paths, input.origenRaw);
   if (origen && "error" in origen) return origen;
 
-  const folderInfo = await prepareSessionFolder(fs, env.cwd(), flow, input.name ?? "");
+  const folderInfo = await prepareSessionFolder(fs, paths, flow, input.name ?? "");
   if ("error" in folderInfo) return folderInfo;
 
   await writeObjetivo(fs, folderInfo, flow, input, origen);
-  await writeHistoryRow(fs, env.cwd(), folderInfo.code, flow, input, origen);
+  await writeHistoryRow(fs, paths, folderInfo.code, flow, input, origen);
   const projectMd = await registerInProjectBlock(fs, env, folderInfo.folder, input.branchesRaw);
   if ("error" in projectMd) return { error: projectMd.error };
 
@@ -100,10 +102,11 @@ function validateInput(input: SessionCreateInput): ValidatedInput | SessionCreat
 async function resolveOrigenIfPresent(
   fs: FileSystemPort,
   env: EnvPort,
+  paths: PathsService,
   origenRaw: string | undefined,
 ): Promise<ResolvedOrigen | SessionCreateError | null> {
   if (!origenRaw) return null;
-  const resolved = await resolveOrigen(fs, env, origenRaw);
+  const resolved = await resolveOrigen(fs, env, paths, origenRaw);
   if ("error" in resolved) {
     return { error: `--from inválido: ${resolved.error}` };
   }
@@ -119,11 +122,11 @@ interface FolderInfo {
 
 async function prepareSessionFolder(
   fs: FileSystemPort,
-  cwd: string,
+  paths: PathsService,
   flow: SessionFlow,
   name: string,
 ): Promise<FolderInfo | SessionCreateError> {
-  const qtcDir = join(cwd, ".qtc", "sessions");
+  const qtcDir = paths.cwdSessionsDir();
   await fs.mkdirp(qtcDir);
   const code = await nextCode(fs, qtcDir);
   const folder = `session${code}-${flow}-${name}`;
@@ -166,7 +169,7 @@ async function writeObjetivo(
 
 async function writeHistoryRow(
   fs: FileSystemPort,
-  cwd: string,
+  paths: PathsService,
   code: string,
   flow: SessionFlow,
   input: SessionCreateInput,
@@ -179,7 +182,7 @@ async function writeHistoryRow(
   if (origen) refsParts.push(`origen:${origen.flow}-${origen.code}`);
   const initialRefs = refsParts.length > 0 ? renderRefs(refsParts.join(",")) : "—";
 
-  await upsertRow(fs, historyPath(cwd), code, (hasFlow) =>
+  await upsertRow(fs, paths.cwdHistoryFile(), code, (hasFlow) =>
     buildRow({
       code,
       flow,

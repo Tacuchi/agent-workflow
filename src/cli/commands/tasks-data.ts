@@ -15,7 +15,7 @@ export const tasksDataCommand: QtcCommand = {
     if (code !== undefined) input.code = code;
     if (onlyOpen) input.onlyOpen = true;
     if (verbose) input.verbose = true;
-    const data = await runTasksCommand(ctx.fs, ctx.env, input);
+    const data = await runTasksCommand(ctx.fs, ctx.env, ctx.paths, input);
     return { ok: true, data, exitCode: 0 };
   },
 };

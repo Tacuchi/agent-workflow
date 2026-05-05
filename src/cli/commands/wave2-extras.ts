@@ -48,7 +48,7 @@ export const phaseDetectCommand: QtcCommand = {
   describe: "Suggest current session phase from artifacts (no mutation).",
   async execute(args: ParsedArgs, ctx: CliContext): Promise<CommandResult> {
     const code = args.values.get("code");
-    const data = await runPhaseDetect(ctx.fs, ctx.env, code);
+    const data = await runPhaseDetect(ctx.fs, ctx.env, ctx.paths, code);
     if ("error" in data) {
       return {
         ok: false,

@@ -13,7 +13,7 @@ export const decisionesListCommand: QtcCommand = {
     const input: { code?: string; full?: boolean } = {};
     if (code !== undefined) input.code = code;
     if (full) input.full = true;
-    const data = await runDecisionesCommand(ctx.fs, ctx.env, input);
+    const data = await runDecisionesCommand(ctx.fs, ctx.env, ctx.paths, input);
     return { ok: true, data, exitCode: 0 };
   },
 };

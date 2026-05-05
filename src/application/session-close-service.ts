@@ -1,6 +1,7 @@
 import type { EnvPort } from "../ports/env.js";
 import type { FileSystemPort } from "../ports/file-system.js";
-import { type UpsertAction, buildRow, historyPath, upsertRow } from "./history-table.js";
+import { type UpsertAction, buildRow, upsertRow } from "./history-table.js";
+import type { PathsService } from "./paths-service.js";
 import {
   type ProjectMdUpsertOutput,
   runProjectMdUpsertWrite,
@@ -46,10 +47,11 @@ const FLAG_TO_TAG: Record<string, string> = {
 export async function runSessionClose(
   fs: FileSystemPort,
   env: EnvPort,
+  paths: PathsService,
   input: SessionCloseInput,
 ): Promise<SessionCloseFullOutput | SessionCloseError> {
   if (!input.code) return { error: "--code es obligatorio" };
-  const session = await resolveSession(fs, env, input.code, true);
+  const session = await resolveSession(fs, env, paths, input.code, true);
   if (!session) return { error: `Sesión no encontrada: ${input.code}` };
 
   const refsParts: string[] = [];
@@ -65,21 +67,24 @@ export async function runSessionClose(
   const refsCombined = refsParts.length > 0 ? refsParts.join(",") : null;
   const refsRendered = refsCombined ? renderRefs(refsCombined) : "—";
 
-  const cwd = env.cwd();
   const date = session.date ?? formatToday();
   const summary = session.summary ?? "";
 
-  const action = await upsertRow(fs, historyPath(cwd), session.code ?? input.code, (hasFlow) =>
-    buildRow({
-      code: session.code ?? input.code ?? "",
-      flow: session.flow ?? null,
-      sesionName: session.name,
-      date,
-      state: "closed",
-      summary,
-      refs: refsRendered,
-      hasFlow,
-    }),
+  const action = await upsertRow(
+    fs,
+    paths.cwdHistoryFile(),
+    session.code ?? input.code,
+    (hasFlow) =>
+      buildRow({
+        code: session.code ?? input.code ?? "",
+        flow: session.flow ?? null,
+        sesionName: session.name,
+        date,
+        state: "closed",
+        summary,
+        refs: refsRendered,
+        hasFlow,
+      }),
   );
 
   const projectMd = await runProjectMdUpsertWrite(fs, env, {

@@ -93,7 +93,7 @@ export const phaseNextCommand: QtcCommand = {
   describe: "Advance session phase to the next slot in the lifecycle.",
   async execute(args: ParsedArgs, ctx: CliContext): Promise<CommandResult> {
     const code = args.values.get("code");
-    const data = await runPhaseNext(ctx.fs, ctx.env, code);
+    const data = await runPhaseNext(ctx.fs, ctx.env, ctx.paths, code);
     if ("error" in data) {
       return {
         ok: false,

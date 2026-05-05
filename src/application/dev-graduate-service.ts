@@ -2,6 +2,7 @@
 import { join } from "node:path";
 import type { EnvPort } from "../ports/env.js";
 import type { FileSystemPort } from "../ports/file-system.js";
+import type { PathsService } from "./paths-service.js";
 import { resolveSession } from "./session-resolver.js";
 
 export interface GraduateInput {
@@ -40,6 +41,7 @@ export type GraduateResult = GraduateOutput | GraduateError;
 export async function runGraduate(
   fs: FileSystemPort,
   env: EnvPort,
+  paths: PathsService,
   input: GraduateInput,
 ): Promise<GraduateResult> {
   if (input.kind !== "decision" && input.kind !== "plan") {
@@ -52,7 +54,7 @@ export async function runGraduate(
     return { error: "--id (DEC-NNN) obligatorio para --kind decision" };
   }
 
-  const session = await resolveSession(fs, env, input.session, true);
+  const session = await resolveSession(fs, env, paths, input.session, true);
   if (!session) return { error: `Sesión no encontrada: ${input.session}` };
   const sessionPath = session.path;
 

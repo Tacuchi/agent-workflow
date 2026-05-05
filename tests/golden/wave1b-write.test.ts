@@ -99,7 +99,8 @@ describe("Wave 1B write commands — golden parity vs python qtc_core", () => {
   it("session-close --code 001 --graduated-decisions 001-stack-typescript", async () => {
     const clone = cloneFixture(FIXTURE);
     const env = new TestEnv(clone.cwd);
-    const result = await runSessionClose(fs, env, {
+    const paths = makeQtcPaths(env);
+    const result = await runSessionClose(fs, env, paths, {
       code: "001",
       graduatedDecisions: "001-stack-typescript",
     });
@@ -122,7 +123,8 @@ describe("Wave 1B write commands — golden parity vs python qtc_core", () => {
   it("session-create --flow dev --name nueva-tarea --objetivo ... --branches sample:main", async () => {
     const clone = cloneFixture(FIXTURE);
     const env = new TestEnv(clone.cwd);
-    const result = await runSessionCreate(fs, env, {
+    const paths = makeQtcPaths(env);
+    const result = await runSessionCreate(fs, env, paths, {
       flow: "dev",
       name: "nueva-tarea",
       objetivo: "Probar session-create del CLI TS",

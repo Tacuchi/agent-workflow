@@ -2,6 +2,7 @@ import { join } from "node:path";
 import type { EnvPort } from "../ports/env.js";
 import type { FileSystemPort } from "../ports/file-system.js";
 import { parseProjectBlock } from "./parsers/project-block.js";
+import type { PathsService } from "./paths-service.js";
 import { relpath } from "./paths.js";
 import { resolveSession } from "./session-resolver.js";
 
@@ -29,9 +30,10 @@ export interface SessionResumeError {
 export async function runSessionResume(
   fs: FileSystemPort,
   env: EnvPort,
+  paths: PathsService,
   input: SessionResumeInput,
 ): Promise<SessionResumeOutput | SessionResumeError> {
-  const session = await resolveSession(fs, env, input.code, true);
+  const session = await resolveSession(fs, env, paths, input.code, true);
   if (!session) {
     return { error: "session_not_found", code: input.code ?? null };
   }

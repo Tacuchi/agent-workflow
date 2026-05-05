@@ -2,6 +2,7 @@ import { join } from "node:path";
 import type { EnvPort } from "../ports/env.js";
 import type { FileSystemPort } from "../ports/file-system.js";
 import { parseProjectBlock } from "./parsers/project-block.js";
+import type { PathsService } from "./paths-service.js";
 import { normalizePhase } from "./phase-detect-service.js";
 import { runProjectMdUpsertWrite } from "./project-md-upsert-service.js";
 import { resolveSession } from "./session-resolver.js";
@@ -29,10 +30,11 @@ export interface PhaseNextError {
 export async function runPhaseNext(
   fs: FileSystemPort,
   env: EnvPort,
+  paths: PathsService,
   code: string | undefined,
 ): Promise<PhaseNextFullOutput | PhaseNextError> {
   if (!code) return { error: "--code es obligatorio" };
-  const session = await resolveSession(fs, env, code, true);
+  const session = await resolveSession(fs, env, paths, code, true);
   if (!session) return { error: `Sesión no encontrada: ${code}` };
 
   const cwd = env.cwd();

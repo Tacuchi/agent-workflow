@@ -28,7 +28,7 @@ export const sessionCloseCommand: QtcCommand = {
     const refs = args.values.get("refs");
     if (refs !== undefined) input.refs = refs;
 
-    const data = await runSessionClose(ctx.fs, ctx.env, input);
+    const data = await runSessionClose(ctx.fs, ctx.env, ctx.paths, input);
     if ("error" in data) {
       return {
         ok: false,

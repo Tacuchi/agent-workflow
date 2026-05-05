@@ -38,7 +38,7 @@ export async function runHistoryUpdate(
   const code = input.code ?? "";
   const state = input.state ?? "active";
 
-  const session = await resolveSession(fs, env, code, true);
+  const session = await resolveSession(fs, env, paths, code, true);
   const fields = mergeFields(input, session, code);
   const refsRendered = renderRefs(input.refs);
   const codeNum = normalizeCode(code);

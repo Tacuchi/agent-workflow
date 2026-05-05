@@ -3,6 +3,7 @@ import type { Flow, Phase, SessionState } from "../domain/types.js";
 import type { EnvPort } from "../ports/env.js";
 import type { FileSystemPort } from "../ports/file-system.js";
 import { firstNonEmptyLine, parseMdSection, parseMdValue } from "./markdown.js";
+import type { PathsService } from "./paths-service.js";
 import { relpath } from "./paths.js";
 
 export const KNOWN_FLOWS: ReadonlyArray<Flow> = ["core", "dev", "design", "analyze"];
@@ -131,11 +132,14 @@ export async function listSessionFolders(
 export async function resolveSession(
   fs: FileSystemPort,
   env: EnvPort,
+  paths: PathsService,
   sessionCode: string | undefined,
   anyState = false,
 ): Promise<SessionEntry | null> {
-  const cwd = env.cwd();
-  const dir = join(cwd, ".qtc", "sessions");
+  // env preserved in signature for symmetry with sibling services; the
+  // sessions directory now resolves via paths so namespace flows through.
+  void env;
+  const dir = paths.cwdSessionsDir();
   const folders = await listSessionFolders(fs, dir);
   if (folders.length === 0) return null;
 

@@ -9,7 +9,12 @@ export const objetivoDataCommand: QtcCommand = {
   describe: "Parse OBJETIVO.md of a session into structured JSON.",
   async execute(args: ParsedArgs, ctx: CliContext): Promise<CommandResult> {
     const code = args.values.get("code");
-    const data = await runObjetivoCommand(ctx.fs, ctx.env, code !== undefined ? { code } : {});
+    const data = await runObjetivoCommand(
+      ctx.fs,
+      ctx.env,
+      ctx.paths,
+      code !== undefined ? { code } : {},
+    );
     return { ok: true, data, exitCode: 0 };
   },
 };

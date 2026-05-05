@@ -2,6 +2,7 @@ import { join } from "node:path";
 import type { EnvPort } from "../ports/env.js";
 import type { FileSystemPort } from "../ports/file-system.js";
 import { type ParsedTasks, type TaskItem, parseTasks } from "./parsers/tasks.js";
+import type { PathsService } from "./paths-service.js";
 import { relpath } from "./paths.js";
 import { resolveSession } from "./session-resolver.js";
 
@@ -33,9 +34,10 @@ export type TasksCommandResult = TasksCommandOutput | TasksCommandError;
 export async function runTasksCommand(
   fs: FileSystemPort,
   env: EnvPort,
+  paths: PathsService,
   input: TasksCommandInput,
 ): Promise<TasksCommandResult> {
-  const session = await resolveSession(fs, env, input.code, true);
+  const session = await resolveSession(fs, env, paths, input.code, true);
   if (!session) {
     return { error: "session_not_found", code: input.code ?? null };
   }
