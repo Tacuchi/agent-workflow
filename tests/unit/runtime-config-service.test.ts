@@ -77,7 +77,7 @@ describe("RuntimeConfigService.resolveRuntime", () => {
   });
 
   it("uses env override over any config file", async () => {
-    env = new FakeEnv({ QTC_AGENT_WORKFLOW_BIN: "aw-custom" });
+    env = new FakeEnv({ AW_AGENT_WORKFLOW_BIN: "aw-custom" });
     fs = new FakeFs(
       new Map([
         [USER_CONFIG, JSON.stringify({ packageName: "x", binName: "ignored", envOverride: "Y" })],
@@ -100,7 +100,7 @@ describe("RuntimeConfigService.resolveRuntime", () => {
           JSON.stringify({
             packageName: "@tacuchi/agent-workflow",
             binName: "user-bin",
-            envOverride: "QTC_AGENT_WORKFLOW_BIN",
+            envOverride: "AW_AGENT_WORKFLOW_BIN",
           }),
         ],
       ]),
@@ -122,7 +122,7 @@ describe("RuntimeConfigService.resolveRuntime", () => {
           JSON.stringify({
             packageName: "@tacuchi/agent-workflow",
             binName: "core-bin",
-            envOverride: "QTC_AGENT_WORKFLOW_BIN",
+            envOverride: "AW_AGENT_WORKFLOW_BIN",
           }),
         ],
       ]),
@@ -137,7 +137,7 @@ describe("RuntimeConfigService.resolveRuntime", () => {
   });
 
   it("ignores empty env override", async () => {
-    env = new FakeEnv({ QTC_AGENT_WORKFLOW_BIN: "   " });
+    env = new FakeEnv({ AW_AGENT_WORKFLOW_BIN: "   " });
     const service = new RuntimeConfigService(fs, env, paths);
 
     const resolved = await service.resolveRuntime();
@@ -160,5 +160,50 @@ describe("RuntimeConfigService.resolveRuntime", () => {
     await expect(service.resolveRuntime()).rejects.toThrow(
       /missing or invalid string field 'binName'/,
     );
+  });
+
+  it("loads extended schema with displayName, mcpGuards, expectedMcpServers, slashCommands", async () => {
+    const fullConfig = {
+      schemaVersion: 1,
+      packageName: "@tacuchi/agent-workflow",
+      binName: "agent-workflow",
+      envOverride: "AW_AGENT_WORKFLOW_BIN",
+      displayName: "QTC Workflow",
+      mcpGuards: {
+        sqlMutation: {
+          toolPattern: "^mcp__plugin.*qtc-(cert|prod).*__execute_sql$",
+          serverPattern: "qtc-(cert|prod)",
+        },
+      },
+      expectedMcpServers: ["qtc-cert", "qtc-prod"],
+      slashCommands: { migrate: "/qtc-core:migrate", session: "/qtc-core:session" },
+    };
+    fs = new FakeFs(new Map([[USER_CONFIG, JSON.stringify(fullConfig)]]));
+    const service = new RuntimeConfigService(fs, env, paths);
+    const resolved = await service.resolveRuntime();
+
+    expect(resolved.displayName).toBe("QTC Workflow");
+    expect(resolved.mcpGuards?.sqlMutation?.toolPattern).toContain("qtc-(cert|prod)");
+    expect(resolved.expectedMcpServers).toEqual(["qtc-cert", "qtc-prod"]);
+    expect(resolved.slashCommands?.migrate).toBe("/qtc-core:migrate");
+    expect(resolved.slashCommands?.session).toBe("/qtc-core:session");
+  });
+
+  it("ignores malformed extended fields gracefully", async () => {
+    const config = {
+      packageName: "x",
+      binName: "y",
+      envOverride: "Z",
+      mcpGuards: "not-an-object",
+      expectedMcpServers: "also-not-array",
+      slashCommands: 42,
+    };
+    fs = new FakeFs(new Map([[USER_CONFIG, JSON.stringify(config)]]));
+    const service = new RuntimeConfigService(fs, env, paths);
+    const resolved = await service.resolveRuntime();
+
+    expect(resolved.mcpGuards).toBeUndefined();
+    expect(resolved.expectedMcpServers).toBeUndefined();
+    expect(resolved.slashCommands).toBeUndefined();
   });
 });

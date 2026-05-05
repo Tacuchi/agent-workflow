@@ -5,6 +5,7 @@ import {
   type AgentWorkflowRuntimeConfig,
   DEFAULT_RUNTIME_CONFIG,
   type ResolvedRuntime,
+  type SlashCommandHints,
 } from "./types.js";
 
 export interface RuntimeConfigServiceOptions {
@@ -71,12 +72,19 @@ export class RuntimeConfigService {
     }
     const raw = await this.fs.readText(path);
     const parsed = parseConfig(raw, path);
-    return {
+    const resolved: ResolvedRuntime = {
       packageName: parsed.packageName,
       binName: parsed.binName,
       source,
       configPath: path,
     };
+    if (parsed.displayName !== undefined) resolved.displayName = parsed.displayName;
+    if (parsed.mcpGuards !== undefined) resolved.mcpGuards = parsed.mcpGuards;
+    if (parsed.expectedMcpServers !== undefined) {
+      resolved.expectedMcpServers = parsed.expectedMcpServers;
+    }
+    if (parsed.slashCommands !== undefined) resolved.slashCommands = parsed.slashCommands;
+    return resolved;
   }
 }
 
@@ -93,7 +101,51 @@ function parseConfig(raw: string, path: string): AgentWorkflowRuntimeConfig {
   const packageName = requireString(json, "packageName", path);
   const binName = requireString(json, "binName", path);
   const envOverride = requireString(json, "envOverride", path);
-  return { packageName, binName, envOverride };
+
+  const config: AgentWorkflowRuntimeConfig = { packageName, binName, envOverride };
+  if (typeof json.schemaVersion === "number") {
+    config.schemaVersion = json.schemaVersion;
+  }
+  if (typeof json.displayName === "string" && json.displayName.length > 0) {
+    config.displayName = json.displayName;
+  }
+  const mcpGuards = parseMcpGuards(json.mcpGuards);
+  if (mcpGuards) config.mcpGuards = mcpGuards;
+  const expectedMcpServers = parseExpectedMcpServers(json.expectedMcpServers);
+  if (expectedMcpServers) config.expectedMcpServers = expectedMcpServers;
+  const slashCommands = parseSlashCommands(json.slashCommands);
+  if (slashCommands) config.slashCommands = slashCommands;
+  return config;
+}
+
+function parseMcpGuards(value: unknown): AgentWorkflowRuntimeConfig["mcpGuards"] | undefined {
+  if (!isRecord(value)) return undefined;
+  const sql = value.sqlMutation;
+  if (
+    isRecord(sql) &&
+    typeof sql.toolPattern === "string" &&
+    typeof sql.serverPattern === "string"
+  ) {
+    return {
+      sqlMutation: { toolPattern: sql.toolPattern, serverPattern: sql.serverPattern },
+    };
+  }
+  return undefined;
+}
+
+function parseExpectedMcpServers(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value.filter((s): s is string => typeof s === "string");
+}
+
+function parseSlashCommands(value: unknown): SlashCommandHints | undefined {
+  if (!isRecord(value)) return undefined;
+  const hints: SlashCommandHints = {};
+  for (const key of ["migrate", "projectInit", "hubInit", "resume", "session"] as const) {
+    const v = value[key];
+    if (typeof v === "string") hints[key] = v;
+  }
+  return hints;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -1,7 +1,34 @@
+export interface McpGuardSqlPatterns {
+  toolPattern: string; // regex source (string) — matched against full tool name
+  serverPattern: string; // regex source (string) — used in error message extraction
+}
+
+export interface McpGuards {
+  sqlMutation?: McpGuardSqlPatterns;
+}
+
+export interface SlashCommandHints {
+  migrate?: string;
+  projectInit?: string;
+  hubInit?: string;
+  resume?: string;
+  session?: string;
+}
+
 export interface AgentWorkflowRuntimeConfig {
+  /** Schema version. Currently 1. */
+  schemaVersion?: number;
   packageName: string;
   binName: string;
   envOverride: string;
+  /** Optional human-readable name (e.g., "QTC Workflow"). Default: namespace. */
+  displayName?: string;
+  /** PreToolUse guard configurations. Empty = guard disabled. */
+  mcpGuards?: McpGuards;
+  /** MCP servers expected by this namespace (used by plugin-doctor). Empty = no MCP expectations. */
+  expectedMcpServers?: string[];
+  /** Hint strings that reference slash commands. Used in error messages. */
+  slashCommands?: SlashCommandHints;
 }
 
 export type RuntimeSource = "env" | "user-config" | "core-config" | "default";
@@ -11,10 +38,17 @@ export interface ResolvedRuntime {
   binName: string;
   source: RuntimeSource;
   configPath?: string;
+  /** Extended fields (only populated when sourced from a config file that includes them). */
+  displayName?: string;
+  mcpGuards?: McpGuards;
+  expectedMcpServers?: string[];
+  slashCommands?: SlashCommandHints;
 }
 
 export const DEFAULT_RUNTIME_CONFIG: AgentWorkflowRuntimeConfig = {
+  schemaVersion: 1,
   packageName: "@tacuchi/agent-workflow",
   binName: "agent-workflow",
-  envOverride: "QTC_AGENT_WORKFLOW_BIN",
+  envOverride: "AW_AGENT_WORKFLOW_BIN",
+  displayName: "agent-workflow",
 };
