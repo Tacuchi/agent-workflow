@@ -32,6 +32,7 @@ import {
 import { pluginDoctorCommand } from "./commands/plugin-doctor.js";
 import { projectMdUpsertCommand } from "./commands/project-md-upsert.js";
 import { releaseDataCommand } from "./commands/release-data.js";
+import { selfCommand } from "./commands/self.js";
 import { sessionArtifactsCommand } from "./commands/session-artifacts.js";
 import { sessionCloseCommand } from "./commands/session-close.js";
 import { sessionCreateCommand } from "./commands/session-create.js";
@@ -118,6 +119,7 @@ async function run(argv: string[]): Promise<ExitCode> {
   registry.register(detachMultirootCommand);
   registry.register(projectMdUpsertCommand);
   registry.register(sessionResumeCommand);
+  registry.register(selfCommand);
 
   let parsed: ReturnType<typeof parseArgv>;
   try {
