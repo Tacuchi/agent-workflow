@@ -20,7 +20,7 @@ export const harnessCommand: QtcCommand = {
 
 export const profilesCommand: QtcCommand = {
   name: "profiles",
-  describe: "Resolve user preferences from ~/.qtc/user-config.md.",
+  describe: "Resolve user preferences from the namespace's user-config.md.",
   async execute(_args: ParsedArgs, ctx: CliContext): Promise<CommandResult> {
     const data = await runProfiles(ctx.fs, ctx.paths);
     return { ok: true, data, exitCode: 0 };
@@ -29,7 +29,7 @@ export const profilesCommand: QtcCommand = {
 
 export const logsCommand: QtcCommand = {
   name: "logs",
-  describe: "View or clear qtc-utils log.",
+  describe: "View or clear the CLI log.",
   async execute(args: ParsedArgs, ctx: CliContext): Promise<CommandResult> {
     const tailStr = args.values.get("tail");
     const tail = tailStr ? Number.parseInt(tailStr, 10) : undefined;

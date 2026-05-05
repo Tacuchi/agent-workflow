@@ -6,7 +6,7 @@ import type { CliContext } from "../types.js";
 
 export const sessionsCommand: QtcCommand<ListSessionsOutput> = {
   name: "sessions",
-  describe: "List sessions in .qtc/sessions/ with counts and next correlative.",
+  describe: "List sessions with counts and next correlative.",
   async execute(args: ParsedArgs, ctx: CliContext): Promise<CommandResult<ListSessionsOutput>> {
     const includeLegacy = args.flags.has("--include-legacy");
     const verbose = args.flags.has("--verbose");

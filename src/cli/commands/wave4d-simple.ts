@@ -9,7 +9,7 @@ import type { CliContext } from "../types.js";
 
 export const bootstrapDsnCommand: QtcCommand = {
   name: "bootstrap-dsn",
-  describe: "Persist DB_CERT_DSN/DB_PROD_DSN to ~/.qtc/dev/dsn.env.",
+  describe: "Persist DB_CERT_DSN/DB_PROD_DSN to the namespace's dsn.env file.",
   async execute(_args: ParsedArgs, ctx: CliContext): Promise<CommandResult> {
     const certDsn = ctx.env.get("DB_CERT_DSN");
     const prodDsn = ctx.env.get("DB_PROD_DSN");

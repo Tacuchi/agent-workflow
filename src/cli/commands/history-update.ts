@@ -6,7 +6,7 @@ import type { CliContext } from "../types.js";
 
 export const historyUpdateCommand: QtcCommand = {
   name: "history-update",
-  describe: "Upsert a row in .qtc/HISTORY.md.",
+  describe: "Upsert a row in the workspace history file.",
   async execute(args: ParsedArgs, ctx: CliContext): Promise<CommandResult> {
     const code = args.values.get("code");
     const state = args.values.get("state");
