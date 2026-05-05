@@ -20,7 +20,7 @@ export const selfCommand: QtcCommand = {
       case "update":
         return selfUpdate(ctx);
       case "install-skill":
-        return selfInstallSkill(ctx);
+        return selfInstallSkill(args, ctx);
       case undefined:
       case "":
         return {

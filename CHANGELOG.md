@@ -4,6 +4,25 @@ All notable changes to `@tacuchi/agent-workflow` are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] — 2026-05-05
+
+Sub-proyecto 2 del spec `agent-workflow-agnostic-design`: poblar el repo `agent-workflow-manager` y entregar la implementación real de `self install-skill` que lo consume.
+
+### Added
+
+- `self install-skill` real implementation:
+  - Default source: `https://github.com/Tacuchi/agent-workflow-manager.git` (cloneable via `git`).
+  - `--from <url|path>` flag accepts an alternate git URL or a local filesystem path.
+  - `--force` overwrites an existing `~/.claude/skills/agent-workflow-manager/` directory.
+  - `--dry-run` previews source/destination without copying.
+  - Validates `SKILL.md` frontmatter (`name`, `description`) before installing.
+  - Skips `.git/` when copying so the installed skill folder is clean.
+- 10 new unit tests in `tests/unit/self-install-skill.test.ts` covering local-path install, URL clone via fake `ProcessPort`, force overwrite, dry-run, missing source, missing/invalid SKILL.md, and clone failure.
+
+### Changed
+
+- `self doctor` now reports the skill at `~/.claude/skills/agent-workflow-manager/` (was `~/.claude/skills/agent-workflow/`). Skill folder name now matches the canonical skill repo name.
+
 ## [1.0.0] — 2026-05-DD
 
 First stable release. The CLI is now namespace-agnostic and reusable beyond the `qtc-*` plugin family.
