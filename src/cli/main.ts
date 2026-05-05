@@ -204,13 +204,9 @@ async function dispatchMenuAction(
 ): Promise<ExitCode> {
   switch (action) {
     case "doctor":
-      writeStdout("Doctor will run in Phase 5b. For now, use `agent-workflow plugin-doctor`.\n");
-      return 0;
+      return await run(["self", "doctor"]);
     case "update":
-      writeStdout(
-        "Update will run in Phase 5b. For now, run `npm install -g @tacuchi/agent-workflow@latest` manually.\n",
-      );
-      return 0;
+      return await run(["self", "update"]);
     case "help":
       printHelp(registry.list());
       return 0;
