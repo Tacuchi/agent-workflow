@@ -13,9 +13,15 @@ export interface ParsedArgs {
   plugin: PluginArgs;
   flags: Set<string>;
   values: Map<string, string>;
+  valuesMulti: Map<string, string[]>;
 }
 
 const KNOWN_FLOWS: ReadonlySet<string> = new Set(["core", "dev", "design", "analyze"]);
+
+// Flag names (without leading `--`) that accept repetition. Each occurrence
+// pushes onto `valuesMulti`; non-multi flags continue to use `values` (last
+// occurrence wins) for back-compat.
+const MULTI_VALUE_FLAGS: ReadonlySet<string> = new Set(["fuente", "working-branch"]);
 
 interface PluginFlagSpec {
   flag: string;
@@ -63,6 +69,7 @@ interface ParseState {
   plugin: PluginArgs;
   flags: Set<string>;
   values: Map<string, string>;
+  valuesMulti: Map<string, string[]>;
   rest: string[];
   command?: string;
 }
@@ -74,6 +81,7 @@ export function parseArgv(argv: string[]): ParsedArgs {
     plugin: {},
     flags: new Set(),
     values: new Map(),
+    valuesMulti: new Map(),
     rest: [],
   };
 
@@ -86,8 +94,19 @@ export function parseArgv(argv: string[]): ParsedArgs {
     plugin: state.plugin,
     flags: state.flags,
     values: state.values,
+    valuesMulti: state.valuesMulti,
     ...(state.command !== undefined ? { command: state.command } : {}),
   };
+}
+
+function setValue(state: ParseState, key: string, value: string): void {
+  if (MULTI_VALUE_FLAGS.has(key)) {
+    const existing = state.valuesMulti.get(key);
+    if (existing) existing.push(value);
+    else state.valuesMulti.set(key, [value]);
+    return;
+  }
+  state.values.set(key, value);
 }
 
 function consumeToken(state: ParseState): void {
@@ -129,13 +148,13 @@ function consumeOptionFlag(state: ParseState, token: string): boolean {
   if (!token.startsWith("--")) return false;
   const eq = token.indexOf("=");
   if (eq > 0) {
-    state.values.set(token.slice(2, eq), token.slice(eq + 1));
+    setValue(state, token.slice(2, eq), token.slice(eq + 1));
     state.index += 1;
     return true;
   }
   const next = state.argv[state.index + 1];
   if (next !== undefined && !next.startsWith("-") && !PLUGIN_FLAGS.has(token)) {
-    state.values.set(token.slice(2), next);
+    setValue(state, token.slice(2), next);
     state.index += 2;
     return true;
   }

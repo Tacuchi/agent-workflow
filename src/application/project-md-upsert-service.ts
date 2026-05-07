@@ -4,6 +4,7 @@ import type { FileSystemPort } from "../ports/file-system.js";
 import {
   type ParsedProjectBlock,
   type ProjectBlockMarkers,
+  type ProjectFuente,
   type ProjectMode,
   type ProjectSession,
   parseProjectBlock,
@@ -15,6 +16,13 @@ import { detectStackDict } from "./stack-detect.js";
 
 export type UpsertOp = "init" | "add-session" | "remove-session" | "update-phase";
 
+export interface ProjectMdUpsertFuente {
+  alias: string;
+  path: string;
+  /** Falls back to `ProjectMdUpsertInput.mainBranch` then to `"certificacion"` at render. */
+  mainBranch?: string;
+}
+
 export interface ProjectMdUpsertInput {
   op: UpsertOp;
   sessionFolder?: string;
@@ -23,6 +31,10 @@ export interface ProjectMdUpsertInput {
   workingBranches?: Record<string, string>;
   phase?: string;
   branches?: string[];
+  /** Hub-mode `--init`: declare fuentes from CLI flags (`--fuente alias:path[:rama]`, repetible). */
+  fuentes?: ProjectMdUpsertFuente[];
+  /** Default rama principal applied to fuentes that do not declare one. */
+  mainBranch?: string;
   verbose?: boolean;
   /** Optional fixed `Última actividad` value. Used by golden tests to keep output deterministic. */
   lastActivity?: string;
@@ -151,7 +163,7 @@ async function buildRenderInput(
   sessions: ProjectSession[],
 ): Promise<RenderProjectBlockInput> {
   const proyecto = input.proyecto ?? existing?.proyecto ?? "";
-  const fuentes = existing?.fuentes ?? [];
+  const fuentes = mergeFuentes(existing?.fuentes ?? [], input);
   const stack =
     existing?.stack && Object.keys(existing.stack).length > 0
       ? existing.stack
@@ -162,6 +174,30 @@ async function buildRenderInput(
     ...(input.workingBranches ?? {}),
   };
   return { proyecto, fuentes, stack, sessions, mode, workingBranches };
+}
+
+/**
+ * Merge CLI-declared fuentes over existing ones (alias-keyed, last wins). Fills
+ * `main_branch` for new fuentes from `input.mainBranch` then defaults to
+ * "certificacion" — same fallback the renderer applies, but resolved here so
+ * the parsed block round-trips deterministically.
+ */
+function mergeFuentes(
+  existing: ProjectFuente[],
+  input: ProjectMdUpsertInput,
+): ProjectFuente[] {
+  if (!input.fuentes || input.fuentes.length === 0) return existing;
+  const defaultRama = input.mainBranch ?? "certificacion";
+  const byAlias = new Map<string, ProjectFuente>();
+  for (const f of existing) byAlias.set(f.alias, f);
+  for (const f of input.fuentes) {
+    byAlias.set(f.alias, {
+      alias: f.alias,
+      path: f.path,
+      main_branch: f.mainBranch ?? defaultRama,
+    });
+  }
+  return Array.from(byAlias.values());
 }
 
 interface WriteSummary {

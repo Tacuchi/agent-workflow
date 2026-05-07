@@ -77,6 +77,7 @@ function buildArgs(values: Record<string, string>, flags: string[]): ParsedArgs 
     plugin: {},
     flags: new Set(flags),
     values: new Map(Object.entries(values)),
+    valuesMulti: new Map(),
   };
 }
 

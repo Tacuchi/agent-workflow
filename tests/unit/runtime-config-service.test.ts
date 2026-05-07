@@ -89,7 +89,7 @@ describe("RuntimeConfigService.resolveRuntime", () => {
 
     expect(resolved.binName).toBe("aw-custom");
     expect(resolved.source).toBe("env");
-    expect(resolved.packageName).toBe("@tacuchi/agent-workflow");
+    expect(resolved.packageName).toBe("@tacuchi/agent-workflow-cli");
   });
 
   it("uses user config when env is absent", async () => {

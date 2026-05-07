@@ -50,13 +50,22 @@ export const projectMdUpsertCommand: QtcCommand = {
     if (proyecto !== undefined) input.proyecto = proyecto;
     const mode = args.values.get("mode");
     if (mode === "hub" || mode === "project") input.mode = mode;
-    const workingBranch = args.values.get("working-branch");
-    if (workingBranch?.includes(":") === true) {
-      const idx = workingBranch.indexOf(":");
-      const alias = workingBranch.slice(0, idx).trim();
-      const branch = workingBranch.slice(idx + 1).trim();
-      if (alias && branch) input.workingBranches = { [alias]: branch };
+
+    const workingBranches = parseWorkingBranches(args.valuesMulti.get("working-branch") ?? []);
+    if (workingBranches !== undefined) input.workingBranches = workingBranches;
+
+    const fuentesParsed = parseFuentesSpecs(args.valuesMulti.get("fuente") ?? []);
+    if ("error" in fuentesParsed) {
+      return {
+        ok: false,
+        error: { code: "INVALID_INPUT", message: fuentesParsed.error },
+        exitCode: 1,
+      };
     }
+    if (fuentesParsed.fuentes.length > 0) input.fuentes = fuentesParsed.fuentes;
+
+    const mainBranch = args.values.get("main-branch");
+    if (mainBranch !== undefined && mainBranch.length > 0) input.mainBranch = mainBranch;
 
     const data = await runProjectMdUpsertWrite(ctx.fs, ctx.env, ctx.paths, input);
     if ("error" in data) {
@@ -78,4 +87,58 @@ function pickOperation(args: ParsedArgs): { op: UpsertOp; folder?: string } | nu
     if (folder !== undefined) return { op, folder };
   }
   return null;
+}
+
+function parseWorkingBranches(specs: string[]): Record<string, string> | undefined {
+  const out: Record<string, string> = {};
+  for (const raw of specs) {
+    const idx = raw.indexOf(":");
+    if (idx <= 0) continue;
+    const alias = raw.slice(0, idx).trim();
+    const branch = raw.slice(idx + 1).trim();
+    if (alias && branch) out[alias] = branch;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+interface FuenteSpec {
+  alias: string;
+  path: string;
+  mainBranch?: string;
+}
+
+function parseFuentesSpecs(
+  specs: string[],
+): { fuentes: FuenteSpec[] } | { error: string } {
+  const out: FuenteSpec[] = [];
+  for (const raw of specs) {
+    const trimmed = raw.trim();
+    const firstColon = trimmed.indexOf(":");
+    if (firstColon <= 0) {
+      return {
+        error: `--fuente formato inválido '${raw}': se esperaba 'alias:path[:rama-principal]'`,
+      };
+    }
+    const alias = trimmed.slice(0, firstColon).trim();
+    const rest = trimmed.slice(firstColon + 1);
+    const lastColon = rest.lastIndexOf(":");
+    let path: string;
+    let rama: string | undefined;
+    if (lastColon < 0) {
+      path = rest.trim();
+    } else {
+      path = rest.slice(0, lastColon).trim();
+      const ramaCandidate = rest.slice(lastColon + 1).trim();
+      if (ramaCandidate.length > 0) rama = ramaCandidate;
+    }
+    if (!alias || !path) {
+      return {
+        error: `--fuente formato inválido '${raw}': alias y path son obligatorios`,
+      };
+    }
+    const entry: FuenteSpec = { alias, path };
+    if (rama !== undefined) entry.mainBranch = rama;
+    out.push(entry);
+  }
+  return { fuentes: out };
 }

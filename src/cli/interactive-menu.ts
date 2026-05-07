@@ -18,7 +18,7 @@ export async function runInteractiveMenu(version: string): Promise<MenuAction> {
     choices: [
       { name: "Doctor (verificar instalación)", value: "doctor" },
       { name: "Install/Update skill (manager bundled)", value: "install-skill" },
-      { name: "Update CLI (npm i -g @tacuchi/agent-workflow)", value: "update" },
+      { name: "Update CLI (npm i -g @tacuchi/agent-workflow-cli)", value: "update" },
       { name: "Help (lista de comandos)", value: "help" },
       { name: "Exit", value: "exit" },
     ],

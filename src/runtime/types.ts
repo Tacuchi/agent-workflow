@@ -47,7 +47,7 @@ export interface ResolvedRuntime {
 
 export const DEFAULT_RUNTIME_CONFIG: AgentWorkflowRuntimeConfig = {
   schemaVersion: 1,
-  packageName: "@tacuchi/agent-workflow",
+  packageName: "@tacuchi/agent-workflow-cli",
   binName: "agent-workflow",
   envOverride: "AW_AGENT_WORKFLOW_BIN",
   displayName: "agent-workflow",
