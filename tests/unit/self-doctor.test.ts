@@ -87,7 +87,7 @@ describe("selfDoctor", () => {
       new Set([
         "/home/u/.claude/skills/agent-workflow",
         "/home/u/.claude/skills/agent-workflow-manager",
-      ])
+      ]),
     );
     const ctx = {
       fs,
@@ -102,7 +102,7 @@ describe("selfDoctor", () => {
       expect(result.data.skill.installed).toBe(true);
       expect(result.data.skill.legacy_leftover).toBe(true);
       expect(result.data.skill.legacy_leftover_path).toBe(
-        "/home/u/.claude/skills/agent-workflow-manager"
+        "/home/u/.claude/skills/agent-workflow-manager",
       );
       expect(result.data.skill.legacy_leftover_warning).toContain("agent-workflow-manager");
     }
