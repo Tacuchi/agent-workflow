@@ -1,17 +1,19 @@
-import { cp, mkdtemp, readFile, rm } from "node:fs/promises";
+import { cp, mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { ParsedArgs } from "../../cli/parser.js";
 import type { CliContext } from "../../cli/types.js";
 import type { CommandResult } from "../../domain/types.js";
 
 export const DEFAULT_SOURCE = "https://github.com/Tacuchi/agent-workflow-manager.git";
 export const SKILL_DIR_NAME = "agent-workflow-manager";
+export const BUNDLED_SKILL_REL_PATH = `skills/${SKILL_DIR_NAME}`;
 
 export interface SelfInstallSkillData {
   status: "installed" | "dry-run";
   source: string;
-  source_kind: "url" | "path";
+  source_kind: "url" | "path" | "bundled";
   dest: string;
   files_copied?: number;
   overwrote_existing?: boolean;
@@ -20,12 +22,34 @@ export interface SelfInstallSkillData {
 export async function selfInstallSkill(
   args: ParsedArgs,
   ctx: CliContext,
+  resolveBundled: () => Promise<string | null> = resolveBundledSkillPath,
 ): Promise<CommandResult<SelfInstallSkillData>> {
   const force = args.flags.has("--force");
   const dryRun = args.flags.has("--dry-run");
-  const sourceArg = args.values.get("from") ?? DEFAULT_SOURCE;
-  const sourceKind: "url" | "path" = isRemoteUrl(sourceArg) ? "url" : "path";
+  const fromArg = args.values.get("from");
   const dest = join(ctx.env.homeDir(), ".claude", "skills", SKILL_DIR_NAME);
+
+  let sourceArg: string;
+  let sourceKind: "url" | "path" | "bundled";
+
+  if (fromArg !== undefined) {
+    sourceArg = fromArg;
+    sourceKind = isRemoteUrl(fromArg) ? "url" : "path";
+  } else {
+    const bundled = await resolveBundled();
+    if (bundled === null) {
+      return {
+        ok: false,
+        error: {
+          code: "BUNDLED_NOT_FOUND",
+          message: `Bundled skill not found relative to the CLI install. This usually means you are running from a dev checkout without a build, or the tarball is missing 'skills/'. Use --from <url> (e.g. ${DEFAULT_SOURCE}) or --from <local-path> to override.`,
+        },
+        exitCode: 1,
+      };
+    }
+    sourceArg = bundled;
+    sourceKind = "bundled";
+  }
 
   const destExists = await ctx.fs.exists(dest);
   if (destExists && !force && !dryRun) {
@@ -56,7 +80,7 @@ export async function selfInstallSkill(
   let stagingDir: string;
   let cleanup: (() => Promise<void>) | undefined;
 
-  if (sourceKind === "path") {
+  if (sourceKind === "path" || sourceKind === "bundled") {
     const sourceExists = await ctx.fs.exists(sourceArg);
     if (!sourceExists) {
       return {
@@ -163,4 +187,32 @@ async function copyTree(src: string, dest: string): Promise<number> {
     },
   });
   return count;
+}
+
+/**
+ * Resolve the bundled skill path by walking up from this module's directory
+ * until a `skills/agent-workflow-manager/SKILL.md` is found. Returns the
+ * directory containing SKILL.md, or null if no candidate is reachable.
+ *
+ * Works in both dist (`dist/application/self/install-skill.js`) and dev
+ * (`src/application/self/install-skill.ts` via a runner) layouts because the
+ * walk-up looks for the marker file rather than a fixed depth.
+ */
+export async function resolveBundledSkillPath(): Promise<string | null> {
+  const here = dirname(fileURLToPath(import.meta.url));
+  let current = here;
+  for (let i = 0; i < 8; i += 1) {
+    const candidate = join(current, BUNDLED_SKILL_REL_PATH);
+    const skillFile = join(candidate, "SKILL.md");
+    try {
+      await stat(skillFile);
+      return candidate;
+    } catch {
+      // not here, walk up
+    }
+    const parent = dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  return null;
 }

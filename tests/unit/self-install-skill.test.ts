@@ -320,4 +320,47 @@ describe("selfInstallSkill", () => {
   it("default source is the canonical GitHub URL", () => {
     expect(DEFAULT_SOURCE).toBe("https://github.com/Tacuchi/agent-workflow-manager.git");
   });
+
+  it("uses bundled skill when --from is not provided (v2.0.0+)", async () => {
+    const fs = new RealFs();
+    const proc = new FakeProcess(async () => ({ code: 0, stdout: "", stderr: "" }));
+    const ctx = buildCtx(home, fs, proc);
+
+    // Inject a resolver that returns the fake source we built in beforeEach.
+    const result = await selfInstallSkill(buildArgs({}, []), ctx, async () => source);
+
+    expect(result.ok).toBe(true);
+    expect(result.exitCode).toBe(0);
+    if (result.ok && result.data) {
+      expect(result.data.source_kind).toBe("bundled");
+      expect(result.data.source).toBe(source);
+      expect(result.data.status).toBe("installed");
+    }
+
+    const installed = await readFile(
+      join(home, ".claude/skills", SKILL_DIR_NAME, "SKILL.md"),
+      "utf8",
+    );
+    expect(installed).toContain("name: agent-workflow-manager");
+
+    // git was NOT invoked — bundled path uses no clone.
+    expect(proc.lastInvocation).toBeUndefined();
+  });
+
+  it("returns BUNDLED_NOT_FOUND when bundled is missing and --from omitted", async () => {
+    const fs = new RealFs();
+    const proc = new FakeProcess(async () => ({ code: 0, stdout: "", stderr: "" }));
+    const ctx = buildCtx(home, fs, proc);
+
+    const result = await selfInstallSkill(buildArgs({}, []), ctx, async () => null);
+
+    expect(result.ok).toBe(false);
+    expect(result.exitCode).toBe(1);
+    if (!result.ok) {
+      expect(result.error.code).toBe("BUNDLED_NOT_FOUND");
+      expect(result.error.message).toContain("--from");
+      expect(result.error.message).toContain(DEFAULT_SOURCE);
+    }
+    expect(proc.lastInvocation).toBeUndefined();
+  });
 });
