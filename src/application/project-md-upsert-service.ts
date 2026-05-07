@@ -182,10 +182,7 @@ async function buildRenderInput(
  * "certificacion" — same fallback the renderer applies, but resolved here so
  * the parsed block round-trips deterministically.
  */
-function mergeFuentes(
-  existing: ProjectFuente[],
-  input: ProjectMdUpsertInput,
-): ProjectFuente[] {
+function mergeFuentes(existing: ProjectFuente[], input: ProjectMdUpsertInput): ProjectFuente[] {
   if (!input.fuentes || input.fuentes.length === 0) return existing;
   const defaultRama = input.mainBranch ?? "certificacion";
   const byAlias = new Map<string, ProjectFuente>();

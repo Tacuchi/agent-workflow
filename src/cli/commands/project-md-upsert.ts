@@ -107,9 +107,7 @@ interface FuenteSpec {
   mainBranch?: string;
 }
 
-function parseFuentesSpecs(
-  specs: string[],
-): { fuentes: FuenteSpec[] } | { error: string } {
+function parseFuentesSpecs(specs: string[]): { fuentes: FuenteSpec[] } | { error: string } {
   const out: FuenteSpec[] = [];
   for (const raw of specs) {
     const trimmed = raw.trim();

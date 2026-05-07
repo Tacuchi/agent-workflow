@@ -36,7 +36,8 @@ export async function selfInstallSkill(
         ok: false,
         error: {
           code: "INVALID_SOURCE",
-          message: `--from must be a local filesystem path. Remote URLs are no longer supported — the skill is bundled inside the CLI tarball. Drop --from to install the bundled skill, or pass a local checkout path.`,
+          message:
+            "--from must be a local filesystem path. Remote URLs are no longer supported — the skill is bundled inside the CLI tarball. Drop --from to install the bundled skill, or pass a local checkout path.",
         },
         exitCode: 1,
       };

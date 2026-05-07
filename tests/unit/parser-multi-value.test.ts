@@ -54,9 +54,6 @@ describe("parser multi-value flags (--fuente / --working-branch)", () => {
       "--fuente",
       "plugin:/repo/plugin",
     ]);
-    expect(parsed.valuesMulti.get("fuente")).toEqual([
-      "core:/repo/core",
-      "plugin:/repo/plugin",
-    ]);
+    expect(parsed.valuesMulti.get("fuente")).toEqual(["core:/repo/core", "plugin:/repo/plugin"]);
   });
 });

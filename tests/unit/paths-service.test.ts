@@ -47,7 +47,9 @@ describe("PathsService", () => {
 
   it("resolves user plugin version file per flow", () => {
     expect(wfPaths.userPluginVersionFile("dev")).toBe("/home/u/.workflow/dev/.plugin-version");
-    expect(wfPaths.userPluginVersionFile("design")).toBe("/home/u/.workflow/design/.plugin-version");
+    expect(wfPaths.userPluginVersionFile("design")).toBe(
+      "/home/u/.workflow/design/.plugin-version",
+    );
   });
 
   it("resolves user core-lib version marker", () => {
