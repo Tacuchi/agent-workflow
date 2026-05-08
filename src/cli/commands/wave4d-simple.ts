@@ -28,17 +28,22 @@ export const bootstrapDsnCommand: QtcCommand = {
 
 export const graduateCommand: QtcCommand = {
   name: "graduate",
-  describe: "Graduate a session decision (DEC-NNN) or plan (TASKS) to docs/.",
+  describe:
+    "Graduate session artifacts (decision/manual/script/especificacion/conclusion) to docs/.",
   async execute(args: ParsedArgs, ctx: CliContext): Promise<CommandResult> {
     const input: Parameters<typeof runGraduate>[3] = {};
     const kind = args.values.get("kind");
     if (kind !== undefined) input.kind = kind;
     const session = args.values.get("session");
     if (session !== undefined) input.session = session;
-    const id = args.values.get("id");
-    if (id !== undefined) input.decId = id;
     const slug = args.values.get("slug");
     if (slug !== undefined) input.slug = slug;
+    const source = args.values.get("source");
+    if (source !== undefined) input.source = source;
+    if (kind === "decision") {
+      const id = args.values.get("id") ?? args.values.get("dec-id");
+      if (id !== undefined) input.decId = id;
+    }
     const data = await runGraduate(ctx.fs, ctx.env, ctx.paths, input);
     if ("error" in data) {
       return {

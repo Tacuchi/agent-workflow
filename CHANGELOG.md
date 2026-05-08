@@ -4,6 +4,61 @@ All notable changes to `@tacuchi/agent-workflow-cli` are documented in this file
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.0] — 2026-05-08
+
+**Major BREAKING — modelo de artefactos simplificado (session006).** Refactor del comando `graduate` para soportar un set canónico de 6 kinds y resolver el destino siempre al workspace root (hub o project), eliminando el prompt M12 de routing por sesión. Sesiones cerradas con el modelo anterior (`docs/planes/`, `docs/refactors/`, `docs/design/`, `docs/design-system/`, `docs/rfcs/`, `docs/post-mortems/`, `docs/analisis/`) quedan tal cual; las nuevas siguen el set reducido.
+
+### BREAKING
+
+- **Set de kinds reducido a 6**: `decision`, `manual`, `script`, `especificacion`, `conclusion`, `release`. Eliminados `plan`, `refactor`, `design`, `design-system`, `rfc`, `postmortem`, `analysis`. Llamadas con kinds antiguos retornan error con la lista actual.
+- **`--kind plan` eliminado sin reemplazo**: TASKS.md vive en la sesión y no se gradúa (era ruido).
+- **`--kind refactor` eliminado sin reemplazo**: REFACTOR.md vive en la sesión; si requiere graduarse, curarlo como `--kind manual` o `--kind especificacion`.
+- **`--kind rfc` / `--kind postmortem` / `--kind analysis` → `--kind conclusion`**: el documento fuente único pasa a ser `CONCLUSIONES.md` (modalidad embebida `tecnica`/`incidente`/`datos` en `## Modalidad`).
+- **`--kind design` / `--kind design-system` → `--kind especificacion`**: la distinción proyecto/sistema queda como metadato del documento.
+- **`--kind release` rechazado desde `graduate`**: usar el comando/skill `release` (es el único disparador de `--kind release` y `--kind script`).
+- **M12 (graduacion-destino) eliminado**: la regla "hub mode → hub root, project mode → cwd" es absoluta. Ya no se pregunta por sesión. Reemplaza la regla anterior "manual/refactor/script gradúan a fuente, rfc/postmortem/analisis gradúan a hub" canonizada en session005.
+
+### Added
+
+- **`graduateManual`** — copia `<sesión>/MANUAL.md` (o `--source <path>`) a `docs/manuales/NNN-<slug>.md`.
+- **`graduateScript`** — copia `<sesión>/scripts/` y `<sesión>/queries/` (si existen) como bundle a `docs/scripts/NNN-sessionXXX-<slug>/`. Pensado para invocación desde el comando `release`; soporta llamada directa.
+- **`graduateEspecificacion`** — copia `<sesión>/ENTREGA.md` (o `--source <path>`) a `docs/especificaciones/NNN-<slug>/<filename>`.
+- **`graduateConclusion`** — copia `<sesión>/CONCLUSIONES.md` a `docs/conclusiones/NNN-<slug>.md`.
+- **`resolveWorkspaceRoot(fs, env, paths)`** (`src/application/paths-service.ts`): walk-up desde `env.cwd()` buscando el directorio que contiene `.<ns>/`. Fix para el caso "user hizo `cd <fuente>` antes de `graduate`" — el destino sigue siendo el hub-root, nunca la fuente. Se aplica también a la resolución de sesión (`runGraduate` reconstruye `PathsService` con el workspace root cuando difiere del cwd).
+- **`--source <path>`** (input opcional) en `graduate` para `--kind manual` / `--kind especificacion`: especifica el archivo fuente dentro de la sesión cuando difiere del default.
+- **Tests dedicados a `graduate`**: `tests/unit/dev-graduate-service.test.ts` con 25 tests cubriendo input validation, los 6 kinds (happy paths + errores), auto-numbering separado para archivos vs directorios, modo `project` (cwd) y modo `hub` (workspace root distinto), y walk-up desde una fuente subdirectory (DEC-002).
+
+### Changed
+
+- `runGraduate` (`src/application/dev-graduate-service.ts`) refactorizado completo. La numeración de archivos vs directorios ahora se separa (`nextNumberInDir` para `.md`, `nextNumberInDirsByPrefix` para bundles), evitando colisiones cuando ambos formatos coexisten.
+- `graduateCommand` (`src/cli/commands/wave4d-simple.ts`): `describe` actualizado a la lista canónica de kinds invocables; lectura de `--source`; `--id` (alias `--dec-id`) capturado solo cuando `kind === "decision"`.
+
+### Removed
+
+- `GraduatePlanOutput`, `graduatePlan`: el kind `plan` ya no existe.
+
+### Migration
+
+Mapeo viejo → nuevo:
+
+| Antes | Ahora |
+|---|---|
+| `graduate --kind rfc --session CODE --slug X` | `graduate --kind conclusion --session CODE --slug X` |
+| `graduate --kind postmortem --session CODE --slug X` | `graduate --kind conclusion --session CODE --slug X` |
+| `graduate --kind analysis --session CODE --slug X` | `graduate --kind conclusion --session CODE --slug X` |
+| `graduate --kind design --session CODE --slug X` | `graduate --kind especificacion --session CODE --slug X` |
+| `graduate --kind design-system --session CODE --slug X` | `graduate --kind especificacion --session CODE --slug X` |
+| `graduate --kind plan --session CODE --slug X` | (sin reemplazo — TASKS.md queda en sesión) |
+| `graduate --kind refactor --session CODE --slug X` | (sin reemplazo — REFACTOR.md queda en sesión; curar como `--kind manual` o `--kind especificacion` si se necesita graduar) |
+
+Sesiones que ya graduaron a `docs/planes/`, `docs/refactors/`, `docs/design/`, `docs/design-system/`, `docs/rfcs/`, `docs/post-mortems/`, `docs/analisis/` no requieren migración — las carpetas siguen existiendo y son legibles. Las nuevas graduaciones usan el set reducido.
+
+### Documentation context
+
+- Modelo nuevo definido en `agent-workflow-refactor/.workflow/sessions/session006-dev-simplificar-modelo-artefactos/DECISIONES.md` (DEC-001..DEC-004).
+- Manual del lifecycle reescrito: `agent-workflow-refactor/docs/manuales/000-mapa-artefactos-workflow.md`.
+- Plugin `qtc-workflow-plugin` v2.0.0 — consolidación de `analyze-rfc`/`analyze-data`/`analyze-postmortem` en `analyze-conclude`, M12 removido del catálogo, regla canónica `references/graduacion-routing.md` reescrita.
+
 ## [4.7.0] — 2026-05-07
 
 **Minor — `graduation-check` command + soporte para regla canónica de routing hub-vs-fuente (session005).** Nuevo chequeo orientado a hub workspaces que detecta artefactos graduados a `<fuente>/docs/<categoria>/` sin breadcrumb correspondiente en `<hub>/docs/<categoria>/000-INDEX.md`. Apoya el cumplimiento de la regla documentada en `qtc-workflow-plugin/skills/session/references/graduacion-routing.md`.
