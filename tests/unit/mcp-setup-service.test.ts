@@ -1,0 +1,113 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { runMcpSetup } from "../../src/application/mcp-setup-service.js";
+import type { EnvPort } from "../../src/ports/env.js";
+
+class FakeEnv implements EnvPort {
+  constructor(private readonly _cwd: string) {}
+  get() {
+    return undefined;
+  }
+  homeDir() {
+    return "/tmp/fakehome";
+  }
+  cwd() {
+    return this._cwd;
+  }
+}
+
+describe("runMcpSetup", () => {
+  let workspace: string;
+  let env: FakeEnv;
+
+  beforeEach(() => {
+    workspace = mkdtempSync(join(tmpdir(), "mcp-setup-svc-"));
+    env = new FakeEnv(workspace);
+  });
+  afterEach(() => {
+    rmSync(workspace, { recursive: true, force: true });
+  });
+
+  it("aplica las 4 combinaciones host×instance en una corrida", () => {
+    const result = runMcpSetup(env, {
+      hosts: ["claude", "codex"],
+      instances: ["cert", "prod"],
+      scope: "workspace",
+      workspace,
+    });
+    if ("ok" in result) throw new Error("did not expect refusal");
+    expect(result.applied).toHaveLength(4);
+    expect(result.skipped).toHaveLength(0);
+    expect(result.errors).toHaveLength(0);
+    expect(result.dry_run).toBe(false);
+    expect(result.scope).toBe("workspace");
+  });
+
+  it("idempotencia: segunda corrida marca todo como skipped", () => {
+    runMcpSetup(env, {
+      hosts: ["claude"],
+      instances: ["cert"],
+      scope: "workspace",
+      workspace,
+    });
+    const second = runMcpSetup(env, {
+      hosts: ["claude"],
+      instances: ["cert"],
+      scope: "workspace",
+      workspace,
+    });
+    if ("ok" in second) throw new Error("did not expect refusal");
+    expect(second.applied).toHaveLength(0);
+    expect(second.skipped).toHaveLength(1);
+  });
+
+  it("dry-run no escribe", () => {
+    const result = runMcpSetup(env, {
+      hosts: ["claude", "codex"],
+      instances: ["cert"],
+      scope: "workspace",
+      workspace,
+      dryRun: true,
+    });
+    if ("ok" in result) throw new Error("did not expect refusal");
+    expect(result.applied.every((r) => r.action === "dry-run")).toBe(true);
+    expect(result.dry_run).toBe(true);
+  });
+
+  it("scope=global sin --force ni --dry-run retorna refusal con exit 2", () => {
+    const result = runMcpSetup(env, {
+      hosts: ["claude"],
+      instances: ["cert"],
+      scope: "global",
+    });
+    expect("ok" in result).toBe(true);
+    if (!("ok" in result)) throw new Error("expected refusal");
+    expect(result.ok).toBe(false);
+    expect(result.error).toBe("global_requires_force");
+    expect(result.exitCode).toBe(2);
+  });
+
+  it("scope=global con --force NO retorna refusal", () => {
+    const result = runMcpSetup(env, {
+      hosts: ["claude"],
+      instances: ["cert"],
+      scope: "global",
+      force: true,
+      workspace,
+    });
+    expect("ok" in result).toBe(false);
+  });
+
+  it("scope=global con --dry-run NO retorna refusal", () => {
+    const result = runMcpSetup(env, {
+      hosts: ["claude"],
+      instances: ["cert"],
+      scope: "global",
+      dryRun: true,
+      workspace,
+    });
+    expect("ok" in result).toBe(false);
+  });
+});

@@ -52,6 +52,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@inquirer/prompts": "^7.10.1"
+    "@inquirer/prompts": "^7.10.1",
+    "smol-toml": "^1.6.1"
   }
 }
