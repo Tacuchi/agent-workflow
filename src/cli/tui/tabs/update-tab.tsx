@@ -1,5 +1,8 @@
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
+import { useCallback, useState } from "react";
 import type { CliContext } from "../../types.js";
+import { type MenuItem, SectionedMenu } from "../components/sectioned-menu.js";
+import { Toast, type ToastTone } from "../components/toast.js";
 import { colors, icons } from "../theme.js";
 
 export interface UpdateTabProps {
@@ -9,12 +12,70 @@ export interface UpdateTabProps {
   onRequestUpdate: () => void;
 }
 
+type UpdateAction = "check" | "install";
+
+const MENU_ITEMS: MenuItem<UpdateAction>[] = [
+  { kind: "item", label: "Buscar actualizaciones", value: "check" },
+  { kind: "item", label: "Actualizar ahora (npm install)", value: "install" },
+];
+
+interface CheckResult {
+  status: "uptodate" | "outdated" | "error";
+  latest?: string;
+  message: string;
+}
+
 export function UpdateTab({ ctx, version, isActive, onRequestUpdate }: UpdateTabProps) {
-  useInput(
-    (input) => {
-      if (input === "u" || input === "U") onRequestUpdate();
+  const [check, setCheck] = useState<CheckResult | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const runCheck = useCallback(async () => {
+    setBusy(true);
+    setCheck(null);
+    try {
+      const result = await ctx.process.run("npm", ["view", ctx.runtime.packageName, "version"], {});
+      if (result.code !== 0) {
+        setCheck({
+          status: "error",
+          message: `npm view falló (exit ${result.code}): ${result.stderr.trim() || "sin detalle"}`,
+        });
+        return;
+      }
+      const latest = result.stdout.trim();
+      if (!latest) {
+        setCheck({ status: "error", message: "npm view devolvió output vacío." });
+        return;
+      }
+      if (latest === version) {
+        setCheck({
+          status: "uptodate",
+          latest,
+          message: `Ya estás en la última versión (v${version}).`,
+        });
+      } else {
+        setCheck({
+          status: "outdated",
+          latest,
+          message: `Hay una versión más reciente disponible: v${latest} (actualmente v${version}).`,
+        });
+      }
+    } catch (err) {
+      setCheck({ status: "error", message: (err as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  }, [ctx, version]);
+
+  const handleSelect = useCallback(
+    (action: UpdateAction) => {
+      if (busy) return;
+      if (action === "check") {
+        void runCheck();
+      } else if (action === "install") {
+        onRequestUpdate();
+      }
     },
-    { isActive },
+    [busy, runCheck, onRequestUpdate],
   );
 
   return (
@@ -35,24 +96,24 @@ export function UpdateTab({ ctx, version, isActive, onRequestUpdate }: UpdateTab
           <Text color={colors.fgSubtle}>{ctx.runtime.packageName}</Text>
         </Box>
       </Box>
-      <Box marginTop={1} flexDirection="column">
-        <Text color={colors.fg}>
-          Presiona{" "}
-          <Text color={colors.accent} bold>
-            u
-          </Text>{" "}
-          para correr:
-        </Text>
-        <Box marginLeft={2}>
-          <Text color={colors.fgMoreSubtle}>{icons.arrow} </Text>
-          <Text color={colors.fgSubtle}>npm install -g {ctx.runtime.packageName}@latest</Text>
-        </Box>
-        <Box marginLeft={2} marginTop={1}>
-          <Text color={colors.fgMoreSubtle}>
-            (cierra el TUI y delega al CLI; vuelve a iniciar agent-workflow al terminar)
-          </Text>
-        </Box>
+
+      <Box marginTop={1}>
+        <SectionedMenu items={MENU_ITEMS} onSelect={handleSelect} isActive={isActive && !busy} />
       </Box>
+
+      {busy ? (
+        <Box marginTop={1}>
+          <Text color={colors.warning}>{icons.spinner} consultando npm registry...</Text>
+        </Box>
+      ) : null}
+
+      {check ? <CheckSummary result={check} /> : null}
     </Box>
   );
+}
+
+function CheckSummary({ result }: { result: CheckResult }) {
+  const tone: ToastTone =
+    result.status === "uptodate" ? "success" : result.status === "outdated" ? "info" : "error";
+  return <Toast tone={tone} message={result.message} />;
 }

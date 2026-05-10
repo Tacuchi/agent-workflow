@@ -174,7 +174,10 @@ function keymapForTab(tab: TabId): KeymapEntry[] {
     case "skills":
       return [{ key: "i", action: "instalar / actualizar" }];
     case "update":
-      return [{ key: "u", action: "ejecutar npm update" }];
+      return [
+        { key: "↑↓", action: "navegar" },
+        { key: "⏎", action: "seleccionar" },
+      ];
     case "status":
       return [];
   }

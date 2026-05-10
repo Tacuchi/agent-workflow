@@ -4,6 +4,25 @@ All notable changes to `@tacuchi/agent-workflow-cli` are documented in this file
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.11.4] — 2026-05-10
+
+**Patch — UpdateTab con menú + fix race ink/inquirer (session042).**
+
+### Fixed
+
+- **Race condition en `runTui`**: tras pulsar `u` en Update tab, `runTui` resolvía vía `onResult` sin esperar a que ink completara su unmount. El siguiente comando (`aw self update` con su `inquirer.confirm`) se enganchaba a una stdin que ink todavía estaba liberando, viendo bytes residuales que inquirer interpretaba como force-close → output siempre `(cancelled)`. Fix: tras capturar el `TuiResult`, hacer `await instance.waitUntilExit()` antes de devolverlo. Garantiza que el terminal queda limpio para el siguiente consumidor.
+
+### Changed
+
+- **Update tab rediseñado** (sin hotkey suelto `u`): ahora muestra un menú navegable con dos opciones:
+  - **"Buscar actualizaciones"** — corre `npm view <pkg> version` vía `ctx.process.run` y muestra el resultado en TUI (toast verde "Ya estás en la última versión" o azul info "Hay versión más reciente: vX.Y.Z").
+  - **"Actualizar ahora (npm install)"** — exit + dispatch al CLI para `npm install -g <pkg>@latest` (igual flujo que antes, pero deliberado en vez de tecla escondida).
+- KeymapBar de Update tab ahora indica `↑↓ navegar · ⏎ seleccionar` (consistente con el resto).
+
+### Tests
+
+- 402 verdes (+4 vs 5.11.3): nuevo `tui-update-tab.test.tsx` cubre render del menú, "Buscar actualizaciones" llama `npm view`, comparación uptodate/outdated, y "Actualizar ahora" llama `onRequestUpdate`.
+
 ## [5.11.3] — 2026-05-10
 
 **Patch — `aw self update` ya no falla con UNHANDLED al cancelar el confirm (session041).**
