@@ -4,6 +4,49 @@ All notable changes to `@tacuchi/agent-workflow-cli` are documented in this file
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.11.0] — 2026-05-10
+
+**Minor — Reestructuración a UI con tabs (session038).** Reemplaza el menú lineal por una TUI con tabs horizontales + contenido contextual por tab. Patrón Crush adaptado: Status (health), MCP (tabla interactiva con hotkeys), Skills (estado + reinstalar), Update (delega a npm). Header con cwd, keymap dinámica por tab, overlay de ayuda con `?`.
+
+### Added
+
+- **Tabs**: 4 contextos navegables con `Tab/⇧Tab` o `1..4`:
+  - **Status** — overview ejecuta `selfDoctor` + lee MCP connections; checklist con `✓`/`✗` por chequeo (CLI, Skill en Claude, Skill en Codex, Conexiones MCP).
+  - **MCP** — tabla interactiva con row-selection (↑↓), hotkeys: `n` (nueva), `c` (install Claude), `x` (install Codex), `d` (doctor), `D` (eliminar con confirmación). Toast inline con resultado de la última acción.
+  - **Skills** — estado de la skill por target + hotkey `i` para reinstalar/actualizar (force).
+  - **Update** — versión actual + paquete; hotkey `u` cierra el TUI y delega a `npm install -g <pkg>@latest`.
+- **Header con breadcrumb**: brand + version a la izquierda, `~/path/al/cwd` a la derecha. Helper `prettyPath` colapsa `$HOME` a `~`.
+- **Help overlay** (`?`): panel bordereado con la lista completa de teclas globales + teclas de MCP. Esc/`?`/q cierran.
+- **Toast inline** (`components/toast.tsx`): feedback de acciones con `tone: success | error | info` + ícono y color del tema.
+- **TabBar component** (`components/tab-bar.tsx`): renderea tabs con brackets `[ ]` y línea `═` debajo del activo; soporta badge `(N)` por tab.
+- **ConnectionsGrid** (`components/connections-grid.tsx`): tabla custom row-selectable (no Unicode box-drawing). Cursor `❯` en fila activa.
+
+### Changed
+
+- **`src/cli/tui/app.tsx`** rewrite completo: ahora es un controlador de tabs con `useInput` global (Tab/⇧Tab/1-4/q/?), keymap dinámico por tab, y monta el tab activo. Las acciones que requieren spawn externo (npm update) salen del TUI y delegan al dispatcher de `main.ts`; el resto se resuelve inline.
+- **Header** (`components/header.tsx`): pasa de `version + subtitle` a `version + cwd`. El subtitle se eliminó (ahora la TabBar comunica el contexto).
+- Connections se muestran en una tabla espaciada por columnas, no más box-drawing dentro del TUI (el `formatConnectionsTable` original sigue para output JSON/headless).
+
+### Removed
+
+- `src/cli/tui/screens/main-menu.tsx` (reemplazado por TabBar + tabs/).
+- `src/cli/tui/screens/mcp-wizard.tsx` (toda la lógica está ahora en `tabs/mcp-tab.tsx`).
+- `src/cli/tui/screens/mcp-done.tsx` (resultado se muestra como Toast inline).
+
+### Tests
+
+- 389 tests verdes (+10 vs 5.10.1):
+  - 4 nuevos en `tui-tab-bar.test.tsx` (brackets, labels, badge, línea ═).
+  - 4 nuevos en `tui-connections-grid.test.tsx` (placeholder, header, status icons, cursor).
+  - 7 nuevos en `tui-app-tabs.test.tsx` (Status default, header con `~`, Tab cambia, número 3, q sale, ? abre help).
+  - Eliminado `tui-main-menu.test.tsx` (componente obsoleto).
+
+### Decisions
+
+- **DEC-015**: tabs en lugar de sidebar. Razón: la UI hereda los contextos del modelo de comandos (`status` = doctor, `mcp` = sub-comando con sub-acciones, `skills` = install-skill, `update` = self-update). Un sidebar con item-detalle hubiera implicado dos navegaciones para llegar a una acción simple; con tabs todo es 1 keystroke.
+- **DEC-016**: las acciones MCP usan **hotkeys de una sola tecla** (`c`, `x`, `d`, `D`, `n`) en vez de menú anidado. Más rápido para usuarios recurrentes; los keymaps se muestran en la KeymapBar inferior y en el `?` overlay para discoverability.
+- **DEC-017**: `npm install -g` queda fuera del TUI por choque de stdout (npm escribe líneas mientras ink controla la pantalla). El UpdateTab hace `onResult({ kind: "menu-action", action: "update" })`, que sale del TUI y dispara el dispatcher original. Trade-off: pierde la sensación "todo dentro del TUI" pero garantiza output limpio.
+
 ## [5.10.1] — 2026-05-10
 
 **Patch — UX polish de la TUI inspirado en charmbracelet/crush (session037).** Mismos screens que 5.10.0, mejor estética: paleta cohesiva, marco redondeado por pantalla, jerarquía visual más clara y barra de teclas persistente.

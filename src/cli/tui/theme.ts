@@ -31,6 +31,10 @@ export const icons = {
   diamond: "◆",
   brand: "◆",
   promptMark: "›",
+  tabActiveLeft: "[",
+  tabActiveRight: "]",
+  tabSeparator: "  ",
+  divider: "─",
 } as const;
 
 export type ColorName = (typeof colors)[keyof typeof colors];
