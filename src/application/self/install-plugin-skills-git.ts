@@ -92,7 +92,7 @@ async function gitClone(url: string, dest: string, ref?: string): Promise<void> 
   gitArgs.push(url, dest);
 
   await new Promise<void>((resolve, reject) => {
-    const proc = spawn("git", gitArgs, { stdio: "pipe" });
+    const proc = spawn("git", gitArgs, { stdio: "pipe", shell: process.platform === "win32" });
     let stderr = "";
     proc.stderr?.on("data", (chunk: Buffer) => {
       stderr += chunk.toString();
@@ -151,7 +151,7 @@ async function hasValidSkillDirs(dir: string): Promise<boolean> {
         const s = await stat(full);
         if (!s.isDirectory()) continue;
         const skillMdContent = await readFile(join(full, "SKILL.md"), "utf8");
-        if (/^---\s*\n[\s\S]*?name:\s*\S/m.test(skillMdContent)) return true;
+        if (/^---[ \t]*\r?\n[\s\S]*?name:\s*\S/m.test(skillMdContent)) return true;
       } catch {
         // not a skill dir
       }

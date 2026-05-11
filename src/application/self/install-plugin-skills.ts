@@ -1,4 +1,4 @@
-import { cp, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ParsedArgs } from "../../cli/parser.js";
 import type { CliContext } from "../../cli/types.js";
@@ -122,11 +122,11 @@ async function processSkill(opts: ProcessSkillOpts): Promise<PluginSkillResult> 
   }
 
   try {
-    await mkdir(dest, { recursive: true });
-    await cp(skillSrcDir, dest, {
-      recursive: true,
-      filter: (src) => !src.includes("/.git"),
-    });
+    // Remove dest first when force=true so the copy is always clean.
+    if (force) {
+      await rm(dest, { recursive: true, force: true });
+    }
+    await copyDir(skillSrcDir, dest);
 
     if (namespace) {
       await patchFrontmatterName(join(dest, "SKILL.md"), finalName);
@@ -172,14 +172,33 @@ async function scanSkillDirs(fromDir: string): Promise<{ name: string; path: str
 
 async function patchFrontmatterName(skillMdPath: string, newName: string): Promise<void> {
   const content = await readFile(skillMdPath, "utf8");
-  const patched = content.replace(/^(---\s*\n[\s\S]*?)name:\s*\S[^\n]*/m, `$1name: ${newName}`);
+  // [^\r\n]* stops before \r on Windows CRLF files so the line ending is preserved.
+  const patched = content.replace(
+    /^(---\s*\r?\n[\s\S]*?)name:\s*\S[^\r\n]*/m,
+    `$1name: ${newName}`,
+  );
   if (patched !== content) {
     await writeFile(skillMdPath, patched, "utf8");
   }
 }
 
+async function copyDir(src: string, dest: string): Promise<void> {
+  await mkdir(dest, { recursive: true });
+  const entries = await readdir(src, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.name === ".git") continue;
+    const srcPath = join(src, entry.name);
+    const destPath = join(dest, entry.name);
+    if (entry.isDirectory()) {
+      await copyDir(srcPath, destPath);
+    } else {
+      await copyFile(srcPath, destPath);
+    }
+  }
+}
+
 function hasValidFrontmatter(content: string): boolean {
-  const match = content.match(/^---\s*\n([\s\S]*?)\n---/);
+  const match = content.match(/^---[ \t]*\r?\n([\s\S]*?)\r?\n---/);
   if (!match) return false;
   const block = match[1] ?? "";
   return /^name:\s*\S/m.test(block) && /^description:\s*\S/m.test(block);
