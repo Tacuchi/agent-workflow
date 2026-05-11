@@ -48,12 +48,14 @@ export function ConnectionsGrid({ connections, cursor, isActive }: ConnectionsGr
         <ColumnHeader text="Claude" width={widths.claude} />
         <Spacer />
         <ColumnHeader text="Codex" width={widths.codex} />
+        <Spacer />
+        <ColumnHeader text="Warp" width={widths.warp} />
       </Box>
       {/* rule */}
       <Box>
         <Text color={colors.fgMoreSubtle}> </Text>
         <Text color={colors.fgMoreSubtle}>
-          {"─".repeat(widths.name + widths.dsn + widths.claude + widths.codex + 6)}
+          {"─".repeat(widths.name + widths.dsn + widths.claude + widths.codex + widths.warp + 8)}
         </Text>
       </Box>
       {/* rows */}
@@ -74,6 +76,8 @@ export function ConnectionsGrid({ connections, cursor, isActive }: ConnectionsGr
             <StatusCell status={c.instalado.claude_code} width={widths.claude} />
             <Spacer />
             <StatusCell status={c.instalado.codex} width={widths.codex} />
+            <Spacer />
+            <StatusCell status={c.instalado.warp} width={widths.warp} />
           </Box>
         );
       })}
@@ -128,8 +132,9 @@ function computeColumnWidths(connections: SelfMcpConnectionView[]): {
   dsn: number;
   claude: number;
   codex: number;
+  warp: number;
 } {
   const name = Math.max("nombre".length, ...connections.map((c) => c.nombre.length));
   const dsn = Math.max("DSN var".length, ...connections.map((c) => c.dsn_var.length));
-  return { name, dsn, claude: "Claude".length, codex: "Codex".length };
+  return { name, dsn, claude: "Claude".length, codex: "Codex".length, warp: "Warp".length };
 }

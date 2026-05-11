@@ -208,7 +208,7 @@ function HelpOverlay() {
         </Text>
         <Help label="↑↓" desc="navegar conexiones" />
         <Help label="n" desc="registrar nueva conexión" />
-        <Help label="c / x" desc="instalar en Claude / Codex" />
+        <Help label="c / x / w" desc="instalar en Claude / Codex / Warp" />
         <Help label="d" desc="diagnosticar conexión" />
         <Help label="D" desc="eliminar conexión (con confirmación)" />
       </Box>

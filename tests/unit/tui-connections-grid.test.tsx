@@ -8,13 +8,14 @@ function view(
   dsnVar: string,
   claude: "si" | "no" | "drift" = "no",
   codex: "si" | "no" | "drift" = "no",
+  warp: "si" | "no" | "drift" = "no",
 ): SelfMcpConnectionView {
   return {
     nombre,
     server_name: nombre,
     dsn_var: dsnVar,
     dsn_visible: false,
-    instalado: { claude_code: claude, codex },
+    instalado: { claude_code: claude, codex, warp },
   };
 }
 
@@ -26,7 +27,7 @@ describe("ConnectionsGrid (TUI)", () => {
     expect(frame).toContain("n");
   });
 
-  it("muestra header columnar (nombre / DSN var / Claude / Codex)", () => {
+  it("muestra header columnar (nombre / DSN var / Claude / Codex / Warp)", () => {
     const { lastFrame } = render(
       <ConnectionsGrid
         connections={[view("cert", "DB_CERT_DSN", "si", "no")]}
@@ -39,6 +40,7 @@ describe("ConnectionsGrid (TUI)", () => {
     expect(frame).toContain("DSN var");
     expect(frame).toContain("Claude");
     expect(frame).toContain("Codex");
+    expect(frame).toContain("Warp");
   });
 
   it("renderea ✓ / – / ! para los estados", () => {

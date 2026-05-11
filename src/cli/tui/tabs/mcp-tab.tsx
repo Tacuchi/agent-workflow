@@ -249,6 +249,7 @@ export function McpTab({ ctx, isActive }: McpTabProps) {
   ): void {
     if (input === "c") void run("install-claude", name, "instalando en Claude...");
     else if (input === "x") void run("install-codex", name, "instalando en Codex...");
+    else if (input === "w") void run("install-warp", name, "instalando en Warp...");
     else if (input === "d") void run("doctor", name, "diagnosticando...");
     else if (input === "D") transitionMode({ kind: "confirm-delete", name });
   }
