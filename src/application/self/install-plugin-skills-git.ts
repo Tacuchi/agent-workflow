@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { appendFile, readFile, readdir, rm, stat } from "node:fs/promises";
+import { appendFile, lstat, readFile, readdir, rm, stat } from "node:fs/promises";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -68,8 +68,10 @@ export async function installPluginSkillsFromGit(
       };
     }
 
+    await dumpTree(tempDir, "after-clone");
     const resolvedDir = await resolvePluginDir(tempDir, namespace);
     await dbg(`resolvePluginDir → ${resolvedDir}`);
+    if (resolvedDir) await dumpTree(resolvedDir, "after-resolve");
     if (!resolvedDir) {
       return {
         ok: false,
@@ -170,6 +172,78 @@ async function hasValidSkillDirs(dir: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+async function dumpTree(root: string, label: string): Promise<void> {
+  await dbg(`--- DUMP ${label} root=${root} ---`);
+  try {
+    await walkAndLog(root, "", 0);
+  } catch (e) {
+    await dbg(`dumpTree FAIL: ${(e as Error).message}`);
+  }
+  await dbg(`--- END DUMP ${label} ---`);
+}
+
+async function walkAndLog(base: string, rel: string, depth: number): Promise<void> {
+  if (depth > 3) return;
+  const here = rel ? join(base, rel) : base;
+  let entries: import("node:fs").Dirent[];
+  try {
+    entries = await readdir(here, { withFileTypes: true });
+  } catch (e) {
+    await dbg(`  ${rel || "."}: readdir ERR ${(e as Error).message}`);
+    return;
+  }
+  for (const e of entries) {
+    if (e.name === ".git") continue;
+    const childRel = rel ? `${rel}/${e.name}` : e.name;
+    const isDir = await inspectEntry(base, childRel, e.name);
+    if (isDir) {
+      await walkAndLog(base, childRel, depth + 1);
+    }
+  }
+}
+
+async function inspectEntry(base: string, childRel: string, name: string): Promise<boolean> {
+  const childAbs = join(base, childRel);
+  const nameBytes = Buffer.from(name, "utf8").toString("hex");
+  const ls = await safeLstat(childAbs);
+  const st = await safeStat(childAbs);
+  await dbg(`  ${childRel} lstat=${ls.type} stat=${st.type} size=${ls.size} nameHex=${nameBytes}`);
+  return ls.type === "DIR";
+}
+
+async function safeLstat(p: string): Promise<{ type: string; size: number | string }> {
+  try {
+    const ls = await lstat(p);
+    const type = ls.isSymbolicLink()
+      ? "SYM"
+      : ls.isDirectory()
+        ? "DIR"
+        : ls.isFile()
+          ? "FIL"
+          : "OTH";
+    return { type, size: ls.size };
+  } catch (err) {
+    return { type: `lstat-ERR(${errCode(err)})`, size: "?" };
+  }
+}
+
+async function safeStat(p: string): Promise<{ type: string }> {
+  try {
+    const st = await stat(p);
+    const type = st.isDirectory() ? "DIR" : st.isFile() ? "FIL" : "OTH";
+    return { type };
+  } catch (err) {
+    return { type: `stat-ERR(${errCode(err)})` };
+  }
+}
+
+function errCode(err: unknown): string {
+  if (err && typeof err === "object" && "code" in err) {
+    return String((err as { code: unknown }).code);
+  }
+  return "?";
 }
 
 interface MarketplaceManifest {
