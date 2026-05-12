@@ -28,7 +28,7 @@ const TABS: TabDescriptor<TabId>[] = [
   { id: "mcp", label: "MCP" },
   { id: "skills", label: "Skills" },
   { id: "update", label: "Update" },
-  { id: "plugins", label: "Plugins" },
+  { id: "plugins", label: "Warp Plugins" },
 ];
 
 export interface AppProps {
@@ -225,12 +225,13 @@ function HelpOverlay() {
       </Box>
       <Box marginTop={1} flexDirection="column">
         <Text color={colors.fgSubtle} bold>
-          Plugins
+          Warp Plugins
         </Text>
         <Help label="↑↓" desc="navegar plugins" />
         <Help label="w / a" desc="instalar skills en Warp Terminal / Agents" />
         <Help label="W / A" desc="forzar reinstalar (sobrescribe existente)" />
         <Help label="r / R" desc="clonar desde git e instalar en Warp (R = force)" />
+        <Help label="n / N" desc="nuevo plugin desde URL git en Warp / Agents" />
       </Box>
       <Box marginTop={1}>
         <Text color={colors.fgMoreSubtle}>Esc cierra esta ventana.</Text>

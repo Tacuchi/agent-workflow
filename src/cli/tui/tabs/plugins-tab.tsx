@@ -35,7 +35,10 @@ interface PluginEntry {
   targets: PluginTargetStatus[];
 }
 
-type Mode = { kind: "idle" } | { kind: "entering-url"; target: InstallTarget; force: boolean };
+type Mode =
+  | { kind: "idle" }
+  | { kind: "entering-url"; target: InstallTarget; force: boolean }
+  | { kind: "entering-custom-url"; target: InstallTarget };
 
 const TARGET_LABELS: Record<InstallTarget, string> = {
   warp: "Warp",
@@ -112,9 +115,14 @@ export function PluginsTab({ ctx, isActive }: PluginsTabProps) {
   );
 
   const installFromGit = useCallback(
-    async (target: InstallTarget, force: boolean, url: string, ref?: string | null) => {
-      const plugin = plugins[cursor];
-      if (!plugin) return;
+    async (
+      target: InstallTarget,
+      force: boolean,
+      url: string,
+      ref?: string | null,
+      namespaceOverride?: string,
+    ) => {
+      const namespace = namespaceOverride ?? plugins[cursor]?.namespace ?? "";
       const label = TARGET_LABELS[target] ?? target;
       setBusy(`clonando e instalando en ${label}…`);
       setToast(null);
@@ -127,7 +135,7 @@ export function PluginsTab({ ctx, isActive }: PluginsTabProps) {
           values: new Map<string, string>([
             ["url", fullUrl],
             ["target", target],
-            ["namespace", plugin.namespace],
+            ["namespace", namespace],
           ]),
           valuesMulti: new Map(),
         };
@@ -163,18 +171,23 @@ export function PluginsTab({ ctx, isActive }: PluginsTabProps) {
     [plugins, cursor, installFromLocal, installFromGit],
   );
 
+  const addCustom = useCallback((target: InstallTarget) => {
+    setMode({ kind: "entering-custom-url", target });
+  }, []);
+
   useInput(
     (input, key) => {
       if (!isActive || busy || mode.kind !== "idle") return;
-      handlePluginsKey(input, key, plugins.length, setCursor, install);
+      handlePluginsKey(input, key, plugins.length, setCursor, install, addCustom);
     },
     { isActive },
   );
 
-  // Esc cancels URL entry
+  // Esc cancels URL entry (both flavors)
   useInput(
     (_, key) => {
-      if (!isActive || mode.kind !== "entering-url") return;
+      if (!isActive) return;
+      if (mode.kind !== "entering-url" && mode.kind !== "entering-custom-url") return;
       if (key.escape) setMode({ kind: "idle" });
     },
     { isActive },
@@ -186,7 +199,7 @@ export function PluginsTab({ ctx, isActive }: PluginsTabProps) {
     return (
       <Box flexDirection="column">
         <Text color={colors.fg} bold>
-          Plugin Skills
+          Warp Plugins
         </Text>
         <Box marginTop={1}>
           <InputPrompt
@@ -206,16 +219,48 @@ export function PluginsTab({ ctx, isActive }: PluginsTabProps) {
     );
   }
 
+  // Custom-URL entry overlay (`n` / `N` from the listing)
+  if (mode.kind === "entering-custom-url") {
+    const label = TARGET_LABELS[mode.target] ?? mode.target;
+    return (
+      <Box flexDirection="column">
+        <Text color={colors.fg} bold>
+          Warp Plugins
+        </Text>
+        <Box marginTop={1}>
+          <InputPrompt
+            message={`URL git de un plugin nuevo (acepta #rama) — destino ${label}:`}
+            validate={(v) => v.startsWith("http") || "Debe ser una URL git válida (https://...)"}
+            onSubmit={(raw) => {
+              const target = mode.target;
+              setMode({ kind: "idle" });
+              const ns = extractNamespaceFromUrl(raw);
+              void installFromGit(target, true, raw, null, ns);
+            }}
+            isActive
+          />
+        </Box>
+        <Box marginTop={1}>
+          <Text color={colors.fgMoreSubtle}>
+            Esc para cancelar · ⏎ para confirmar · ej:
+            https://bitbucket.org/foo/my-plugin.git#feature/x
+          </Text>
+        </Box>
+      </Box>
+    );
+  }
+
   if (plugins.length === 0 && !busy) {
     return (
       <Box flexDirection="column">
         <Text color={colors.fg} bold>
-          Plugin Skills
+          Warp Plugins
         </Text>
         <Box marginTop={1}>
           <Text color={colors.fgMoreSubtle} italic>
-            (sin plugins detectados — instala qtc-workflow-plugin desde el marketplace de Claude
-            Code)
+            (sin plugins detectados — pulsa <Text color={colors.accent}>n</Text> /{" "}
+            <Text color={colors.accent}>N</Text> para agregar desde URL git en Warp / Agents, o
+            instala qtc-workflow-plugin desde el marketplace de Claude Code)
           </Text>
         </Box>
       </Box>
@@ -225,7 +270,7 @@ export function PluginsTab({ ctx, isActive }: PluginsTabProps) {
   return (
     <Box flexDirection="column">
       <Text color={colors.fg} bold>
-        Plugin Skills
+        Warp Plugins
       </Text>
       <Box marginTop={1} flexDirection="column">
         {plugins.map((plugin, i) => (
@@ -379,6 +424,7 @@ function semverDesc(a: string, b: string): number {
 }
 
 type InstallFn = (target: InstallTarget, force?: boolean, forceGit?: boolean) => void;
+type AddCustomFn = (target: InstallTarget) => void;
 
 function handlePluginsKey(
   input: string,
@@ -386,6 +432,7 @@ function handlePluginsKey(
   pluginsLength: number,
   setCursor: (fn: (c: number) => number) => void,
   install: InstallFn,
+  addCustom: AddCustomFn,
 ): void {
   if (key.upArrow) {
     setCursor((c) => Math.max(0, c - 1));
@@ -401,4 +448,17 @@ function handlePluginsKey(
   else if (input === "A") install("agents", true);
   else if (input === "r") install("warp", false, true);
   else if (input === "R") install("warp", true, true);
+  else if (input === "n") addCustom("warp");
+  else if (input === "N") addCustom("agents");
+}
+
+export function extractNamespaceFromUrl(rawUrl: string): string {
+  const url = rawUrl.split("#")[0] ?? rawUrl;
+  const lastSeg = url.replace(/\/+$/, "").split("/").pop() ?? "";
+  const cleaned = lastSeg.replace(/\.git$/i, "");
+  const slug = cleaned
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug.slice(0, 32);
 }
