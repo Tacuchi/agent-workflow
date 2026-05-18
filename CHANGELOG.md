@@ -4,6 +4,28 @@ All notable changes to `@tacuchi/agent-workflow-cli` are documented in this file
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.18.0] — 2026-05-17
+
+**Minor — Nuevo PreToolUse hook `git-commit-advisor` (session053-dev-per-fuente-anchors-bash-hook).** Extiende la cobertura de hooks PreToolUse del runtime qtc-* a `Bash`. Detecta `git commit -m "..."` y emite advisor no-bloqueante (stderr + exit 0) cuando hay sesión activa y el mensaje no incluye el tag `session<NNN>`. Completa la opción E + F del CONCLUSIONS de session051: cerrar el gap de commits-fuera-de-sesión a nivel runtime (capa hook PreToolUse) sin romper ergonomía (advisor en lugar de gate).
+
+### Added
+
+- `src/application/hook-git-commit-advisor.ts` — implementación del hook. Lee stdin JSON (PreToolUse payload), filtra a `tool_name === "Bash"`, parsea `tool_input.command` buscando `\bgit\s+commit\b`, extrae mensaje de `-m "..."` o `-m '...'`, lee `QTC-PROJECT.Status.sessions` del cwd para resolver código de sesión activa, y emite advisor si el mensaje no incluye `/session\d{3}/i`.
+- Subcomando `agent-workflow hook git-commit-advisor` en `src/cli/commands/hook.ts`. Convive con `branch-check` y `sql-mutation-guard`.
+- `tests/unit/hook-git-commit-advisor.test.ts` — 12 tests cubriendo todos los casos (A/B/C/D/E/F/G/H): non-Bash, Bash sin git commit, --amend interactivo, sin QTC-PROJECT, sin sesión activa, sesión sin tag, sesión con tag, regex laxo `session\d{3}`, bypass `AW_COMMIT_ADVISOR=off`, comillas simples, JSON inválido, AGENTS.md fallback.
+- Bypass env var `AW_COMMIT_ADVISOR=off` para desactivar el advisor en la sesión actual del host.
+
+### Behavior preserved
+
+- Hook es **no-bloqueante** (exit 0 siempre). Una fase 2 opt-in con gate hard (`AW_COMMIT_GATE=on` o similar) se evaluará tras observar uso real.
+- Si el cwd no tiene `CLAUDE.md`/`AGENTS.md` con bloque `<!-- WORKFLOW-PROJECT-START -->`, hook degrada a no-op silencioso. Funciona en cualquier workspace sin requerir setup adicional.
+- Coexiste con hooks pre-commit/commit-msg de git tradicionales — ambos se ejecutan independientemente.
+- Mensajes sin `-m` (editor interactivo, `git commit --amend` sin nuevo mensaje, `git commit -F file`) se ignoran porque el hook no puede ver el contenido final del mensaje.
+
+### Plugin wire-up
+
+- `qtc-workflow-plugin` (vía `qtc-plugins-marketplace`) registra el hook en `hooks/hooks.json` y `codex-hooks/hooks.json` con `matcher: "Bash"` en una entry nueva de `PreToolUse[]` (coexistiendo con `branch-check` y `sql-mutation-guard`). Para que el advisor sea visible el usuario debe actualizar a esta versión del CLI **y** a la versión del plugin que registra el matcher Bash.
+
 ## [5.16.0] — 2026-05-12
 
 **Minor — UX post-install del target Warp + subcomando `mcp warp-status` (session001-dev-fix-warp-mcp-target-path).** Los paths `~/.warp/.mcp.json` y `.warp/.mcp.json` ya son los correctos según docs.warp.dev (Warp los lee, con Auto-spawn On by default). El gap real era de UX: si el toggle global **File-based MCP Servers** está apagado en Settings, Warp detecta el archivo pero no spawnea el server, y el TUI marcaba `✓` sin avisar del paso pendiente. Esta versión cierra ese gap sin tocar paths/writer/reader.

@@ -1,4 +1,5 @@
 import { runBranchCheckHook } from "../../application/hook-branch-check.js";
+import { runGitCommitAdvisor } from "../../application/hook-git-commit-advisor.js";
 import { runSqlMutationGuard } from "../../application/hook-sql-mutation-guard.js";
 import type { CommandResult } from "../../domain/types.js";
 import type { ParsedArgs } from "../parser.js";
@@ -16,7 +17,8 @@ async function readStdin(): Promise<string> {
 
 export const hookCommand: QtcCommand = {
   name: "hook",
-  describe: "PreToolUse hook target. Subcommands: branch-check, sql-mutation-guard.",
+  describe:
+    "PreToolUse hook target. Subcommands: branch-check, sql-mutation-guard, git-commit-advisor.",
   async execute(args: ParsedArgs, ctx: CliContext): Promise<CommandResult> {
     const subcommand = args.rest[0];
     if (!subcommand) {
@@ -24,7 +26,8 @@ export const hookCommand: QtcCommand = {
         ok: false,
         error: {
           code: "INVALID_INPUT",
-          message: "hook requires a subcommand: branch-check | sql-mutation-guard",
+          message:
+            "hook requires a subcommand: branch-check | sql-mutation-guard | git-commit-advisor",
         },
         exitCode: 1,
       };
@@ -44,6 +47,17 @@ export const hookCommand: QtcCommand = {
     }
     if (subcommand === "sql-mutation-guard") {
       const result = runSqlMutationGuard({ stdin, env: ctx.env, runtime: ctx.runtime });
+      if (result.stderr) writeStderr(result.stderr);
+      return { ok: true, data: undefined, exitCode: result.exitCode };
+    }
+    if (subcommand === "git-commit-advisor") {
+      const result = await runGitCommitAdvisor({
+        stdin,
+        fs: ctx.fs,
+        env: ctx.env,
+        paths: ctx.paths,
+        displayName: ctx.runtime.displayName ?? ctx.namespace.namespace,
+      });
       if (result.stderr) writeStderr(result.stderr);
       return { ok: true, data: undefined, exitCode: result.exitCode };
     }
